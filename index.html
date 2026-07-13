@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Proof Checker — Propositional Logic</title>
+  <link rel="stylesheet" href="style.css?v=14" />
+</head>
+<body>
+
+  <!-- ── Header ─────────────────────────────────────────────────────────── -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-text">Proof Checker</span>
+        <span class="logo-subtitle">Propositional Logic</span>
+      </div>
+      <div class="header-right">
+        <button type="button" id="copy-link-btn" class="copy-link-btn" title="Copy a link to this proof">
+          <svg class="copy-link-icon" width="15" height="15" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+          </svg>
+          <span class="copy-link-text">Copy link</span>
+        </button>
+        <a href="#" class="help-link" onclick="toggleHelp(event)">Help</a>
+        <button class="theme-toggle" data-theme-toggle
+                aria-label="Switch theme" title="Switch theme">
+          <svg class="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+          <svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4"/>
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Help Panel ─────────────────────────────────────────────────────── -->
+  <div id="help-panel" class="help-panel" hidden>
+    <div class="help-inner">
+      <h2>Natural Deduction — Propositional Logic</h2>
+      <div class="help-cols">
+
+        <div class="help-col">
+          <h3>Proof format</h3>
+          <p>Each line: <code>formula  rule  citations</code></p>
+          <p>Subproofs are <strong>indented</strong> (use spaces). Open a subproof by starting an indented assumption (<code>A</code>). Close it by returning to the outer level and citing the subproof as a range <code>m–n</code> (assumption through last line), e.g. <code>→I 2–3</code>. Separate multiple line numbers with commas, e.g. <code>∧I 1, 2</code>.</p>
+          <pre class="help-pre">p → q   P
+p        P
+q        →E  1, 2</pre>
+          <pre class="help-pre">p → q   P
+  p      A
+  q      →E  1, 2
+p → q   →I  2–3</pre>
+          <h3>Special symbol</h3>
+          <p><code>⊥</code> (falsum) — type as <code>_|_</code>, <code>bot</code>, or <code>⊥</code></p>
+        </div>
+
+        <div class="help-col">
+          <h3>Rules</h3>
+          <table class="help-table">
+            <thead><tr><th>Rule</th><th>Name</th><th>Cite</th><th>Result</th></tr></thead>
+            <tbody>
+              <tr><td><code>P</code></td><td>Premise</td><td>—</td><td>φ (a listed premise)</td></tr>
+              <tr><td><code>A</code></td><td>Assumption</td><td>—</td><td>φ (any; opens subproof)</td></tr>
+              <tr><td><code>R</code></td><td>Repetition</td><td>n</td><td>φ</td></tr>
+              <tr><td><code>∧I</code></td><td>Conj. Intro</td><td>m, n</td><td>φ∧ψ</td></tr>
+              <tr><td><code>∧E</code></td><td>Conj. Elim</td><td>n</td><td>φ  or  ψ</td></tr>
+              <tr><td><code>→E</code></td><td>Cond. Elim (MP)</td><td>m, n</td><td>ψ</td></tr>
+              <tr><td><code>→I</code></td><td>Cond. Intro</td><td>m–n</td><td>φ→ψ  (subproof m–n)</td></tr>
+              <tr><td><code>∨I</code></td><td>Disj. Intro</td><td>n</td><td>φ∨ψ</td></tr>
+              <tr><td><code>∨E</code></td><td>Disj. Elim</td><td>m, n, k</td><td>χ</td></tr>
+              <tr><td><code>¬E</code></td><td>Neg. Elim</td><td>m, n</td><td>⊥</td></tr>
+              <tr><td><code>¬I</code></td><td>Neg. Intro</td><td>m–n</td><td>¬φ  (subproof m–n)</td></tr>
+              <tr><td><code>EFSQ</code></td><td>Ex Falso</td><td>n</td><td>any φ</td></tr>
+              <tr><td><code>DN</code></td><td>Double Neg.</td><td>n</td><td>φ or ¬¬φ</td></tr>
+            </tbody>
+          </table>
+          <h3>ASCII shortcuts</h3>
+          <p><code>/\</code> or <code>&amp;</code> for ∧</p>
+          <p><code>\/</code> or <code>|</code> for ∨</p>
+          <p><code>-&gt;</code> for →</p>
+          <p><code>~</code> for ¬</p>
+          <p class="help-note">Every binary connective needs its own parentheses: write <code>(p ∧ q) → r</code>, not <code>p ∧ q → r</code>. (You may omit the outermost pair.)</p>
+          <p class="help-note">Cite line numbers separated by commas (e.g. <code>∧I 1, 2</code>). Subproof rules (<code>→I</code>, <code>¬I</code>) use a dash for the range (e.g. <code>→I 2–3</code>) — not commas or spaces.</p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Main ───────────────────────────────────────────────────────────── -->
+  <main class="app-main-single">
+
+    <!-- Examples -->
+    <div class="tree-row">
+      <div class="examples-section">
+        <div class="examples-group">
+          <span class="examples-group-label">Rules</span>
+          <div id="rules-row" class="examples-row"></div>
+        </div>
+        <div class="examples-group">
+          <span class="examples-group-label">Examples</span>
+          <div id="proofs-row" class="examples-row"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sequent card -->
+    <div class="tree-row">
+      <section class="card">
+        <div class="card-header">
+          <h2 class="section-title">Sequent</h2>
+          <div id="sequent-display" class="sequent-display"></div>
+        </div>
+        <div class="sequent-row">
+          <div class="sequent-field">
+            <label class="sequent-label" for="premises-input">Premises</label>
+            <input id="premises-input" class="formula-input-field" type="text"
+                   placeholder="e.g., p→q, p" autocomplete="off" spellcheck="false" />
+            <div class="parse-status" id="premises-status" aria-live="polite"></div>
+          </div>
+          <div class="sequent-turnstile">⊢</div>
+          <div class="sequent-field">
+            <label class="sequent-label" for="conclusion-input">Conclusion</label>
+            <input id="conclusion-input" class="formula-input-field" type="text"
+                   placeholder="e.g.  q" autocomplete="off" spellcheck="false" />
+            <div class="parse-status" id="conclusion-status" aria-live="polite"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Proof input card -->
+    <div class="tree-row">
+      <section class="card">
+        <div class="card-header">
+          <h2 class="section-title">Proof</h2>
+        </div>
+        <div class="symbol-bar">
+          <button class="sym-btn" onclick="insertSym('¬')" title="Negation">¬</button>
+          <button class="sym-btn" onclick="insertSym('∧')" title="Conjunction">∧</button>
+          <button class="sym-btn" onclick="insertSym('∨')" title="Disjunction">∨</button>
+          <button class="sym-btn" onclick="insertSym('→')" title="Conditional">→</button>
+          <button class="sym-btn" onclick="insertSym('⊥')" title="Falsum">⊥</button>
+          <button class="sym-btn" onclick="insertSym('∧I')" title="Conjunction Introduction">∧I</button>
+          <button class="sym-btn" onclick="insertSym('∧E')" title="Conjunction Elimination">∧E</button>
+          <button class="sym-btn" onclick="insertSym('→I')" title="Conditional Introduction">→I</button>
+          <button class="sym-btn" onclick="insertSym('→E')" title="Conditional Elimination">→E</button>
+          <button class="sym-btn" onclick="insertSym('∨I')" title="Disjunction Introduction">∨I</button>
+          <button class="sym-btn" onclick="insertSym('∨E')" title="Disjunction Elimination">∨E</button>
+          <button class="sym-btn" onclick="insertSym('¬I')" title="Negation Introduction">¬I</button>
+          <button class="sym-btn" onclick="insertSym('¬E')" title="Negation Elimination">¬E</button>
+          <button class="sym-btn" onclick="insertSym('DN')"  title="Double Negation">DN</button>
+          <button class="sym-btn" onclick="insertSym('EFSQ')" title="Ex Falso">EFSQ</button>
+        </div>
+
+        <textarea
+          id="proof-textarea"
+          class="proof-textarea"
+          placeholder="Enter your proof here. One step per line: formula  rule  line-citations
+Example:
+p → q   P
+p        P
+q        →E  1, 2"
+          spellcheck="false"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+        ></textarea>
+      </section>
+    </div>
+
+    <!-- Completion banner -->
+    <div id="completion-banner" class="completion-banner" hidden>
+      ✓ Proof complete — all steps verified and conclusion reached
+    </div>
+
+    <!-- Output / Fitch display card -->
+    <div class="tree-row">
+      <section class="card">
+        <div class="card-header">
+          <h2 class="section-title">Verification</h2>
+        </div>
+        <div id="output-panel" class="output-panel">
+          <div class="output-empty">Enter a proof above to check it.</div>
+        </div>
+      </section>
+    </div>
+
+  </main>
+
+  <script src="parser.js?v=14"></script>
+  <script src="proof-engine.js?v=14"></script>
+  <script src="app.js?v=14"></script>
+</body>
+</html>
