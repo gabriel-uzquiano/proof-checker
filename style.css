@@ -1246,3 +1246,20 @@ input, select { font: inherit; color: inherit; }
   border-radius: 1px;
 }
 [data-theme="dark"] .fitch-premise-sep { background: #444; }
+
+/* ── Card mode (single-card iframe embed) ───────────────────────────────────── */
+body.card-mode {
+  padding: 0;
+  background: transparent;
+}
+
+body.card-mode main {
+  padding: 0.5rem 0.75rem 0.75rem;
+  max-width: 100%;
+}
+
+body.card-mode .card {
+  border-radius: 6px;
+  box-shadow: none;
+  border: 1px solid var(--border);
+}

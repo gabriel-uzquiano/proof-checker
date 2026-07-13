@@ -562,3 +562,52 @@ document.querySelectorAll('.sym-btn').forEach((b) => {
 buildExampleButtons();
 loadFromHash();
 run();
+
+// ── Card-mode: ?card=sequent|proof|verify ─────────────────────────────────────
+// When loaded inside an iframe with ?card=<name>, the app enters card mode:
+// the header, help panel, examples bar, and all other cards are hidden.
+//
+// Supported values:
+//   ?card=sequent  — Sequent card only (premises + conclusion inputs)
+//   ?card=proof    — Proof card only (textarea + symbol bar)
+//   ?card=verify   — Verification card only (Fitch display)
+//
+// Comma-separated for multiple: ?card=proof,verify
+// Hash state (#p=...&c=...&pr=...) still works normally.
+
+(function applyCardMode() {
+  const params = new URLSearchParams(location.search);
+  if (!params.has('card')) return;
+
+  const requested = new Set(
+    params.get('card').split(',').map(s => s.trim().toLowerCase())
+  );
+
+  const cardRows = {
+    sequent: document.querySelectorAll('.tree-row')[0],
+    proof:   document.querySelectorAll('.tree-row')[1],
+    verify:  document.querySelectorAll('.tree-row')[2],
+  };
+
+  const header    = document.querySelector('.app-header');
+  const examples  = document.querySelector('.examples-bar');
+  const helpPanel = document.getElementById('help-panel');
+  const banner    = document.getElementById('completion-banner');
+
+  if (header)    header.hidden    = true;
+  if (examples)  examples.hidden  = true;
+  if (helpPanel) helpPanel.hidden = true;
+  if (banner)    banner.hidden    = true;
+
+  Object.entries(cardRows).forEach(([name, el]) => {
+    if (!el) return;
+    el.hidden = !requested.has(name);
+  });
+
+  document.body.classList.add('card-mode');
+
+  if (requested.has('sequent') && requested.size === 1) {
+    if (typeof premisesInput   !== 'undefined') premisesInput.readOnly   = true;
+    if (typeof conclusionInput !== 'undefined') conclusionInput.readOnly = true;
+  }
+})();
