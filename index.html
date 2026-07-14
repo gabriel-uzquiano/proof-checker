@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Proof Checker — Logic</title>
-  <link rel="stylesheet" href="style.css?v=19" />
+  <link rel="stylesheet" href="style.css?v=20" />
 </head>
 <body>
 
@@ -170,6 +170,9 @@ p → q   →I  2–3</pre>
           <button class="sym-btn" onclick="insertSym('∀')" title="Universal quantifier">∀</button>
           <button class="sym-btn" onclick="insertSym('∃')" title="Existential quantifier">∃</button>
           <button class="sym-btn" onclick="insertSym('⊥')" title="Falsum">⊥</button>
+        </div>
+        <div class="symbol-bar symbol-bar--rules">
+          <button class="sym-btn" onclick="insertSym('R')"   title="Repetition">R</button>
           <button class="sym-btn" onclick="insertSym('∧I')" title="Conjunction Introduction">∧I</button>
           <button class="sym-btn" onclick="insertSym('∧E')" title="Conjunction Elimination">∧E</button>
           <button class="sym-btn" onclick="insertSym('→I')" title="Conditional Introduction">→I</button>
@@ -221,8 +224,8 @@ q        →E  1, 2"
 
   </main>
 
-  <script src="parser.js?v=19"></script>
-  <script src="proof-engine.js?v=19"></script>
-  <script src="app.js?v=19"></script>
+  <script src="parser.js?v=20"></script>
+  <script src="proof-engine.js?v=20"></script>
+  <script src="app.js?v=20"></script>
 </body>
 </html>
