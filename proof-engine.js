@@ -1,118 +1,194 @@
 /**
- * Proof Engine for Propositional Logic Natural Deduction.
+ * Proof Engine for Propositional + Quantificational Logic Natural Deduction.
  *
- * Textbook rules (PHIL 220):
- *   R       — Repetition             cite: [n]         result: φ  (copy of line n)
- *   ∧I      — Conjunction Intro      cite: [m,n]       result: φ∧ψ
- *   ∧E      — Conjunction Elim       cite: [n]         result: φ or ψ  (either conjunct)
- *   →E      — Conditional Elim (MP)  cite: [m,n]       result: ψ  (from φ→ψ and φ)
- *   →I      — Conditional Intro      cite: [m–n]       result: φ→ψ  (subproof m–n: assume φ, derive ψ)
- *   ∨I      — Disjunction Intro      cite: [n]         result: φ∨ψ or ψ∨φ
- *   ∨E      — Disjunction Elim       cite: [m,n,k]     result: χ  (from φ∨ψ, φ→χ, ψ→χ)
- *   ¬E      — Negation Elim          cite: [m,n]       result: ⊥  (from φ and ¬φ)
- *   ¬I      — Negation Intro         cite: [m–n]       result: ¬φ (subproof m–n: assume φ, derive ⊥)
+ * Propositional rules (PHIL 220):
+ *   P       — Premise
+ *   A       — Assumption (opens subproof)
+ *   R       — Repetition             cite: [n]
+ *   ∧I      — Conjunction Intro      cite: [m,n]
+ *   ∧E      — Conjunction Elim       cite: [n]
+ *   →E      — Conditional Elim (MP)  cite: [m,n]
+ *   →I      — Conditional Intro      cite: [m–n]  (subproof)
+ *   ∨I      — Disjunction Intro      cite: [n]
+ *   ∨E      — Disjunction Elim       cite: [m,n,k]
+ *   ¬E      — Negation Elim          cite: [m,n]
+ *   ¬I      — Negation Intro         cite: [m–n]  (subproof)
+ *   EFSQ    — Ex Falso               cite: [n]
+ *   DN      — Double Negation        cite: [n]
  *
- * Subproof rules (→I, ¬I) cite a subproof as a RANGE m–n (a dash between the
- * assumption line and the last line), e.g.  q→p   →I  2–3 .
- * A plain pair of line numbers (→I 2 3) is rejected with a corrective hint.
- *   EFSQ    — Ex Falso               cite: [n]         result: any φ  (from ⊥)
- *   DN      — Double Negation        cite: [n]         result: φ  (from ¬¬φ)
- *   P       — Premise                cite: []          result: listed premise
- *   A       — Assumption             cite: []          result: any φ  (opens subproof)
+ * Quantifier rules (PHIL 220 Chapter 10):
+ *   ∀E      — Universal Elim         cite: [n]
+ *             From ∀xφ, derive φ(a/x) for any constant a.
+ *   ∀I      — Universal Intro        cite: [n]
+ *             From φ(a/x), derive ∀xφ, provided a is fresh:
+ *             a must not occur in ∀xφ (i.e. in φ with x free) nor in any undischarged assumption.
+ *   ∃I      — Existential Intro      cite: [n]
+ *             From φ(a/x), derive ∃xφ for some constant a occurring in φ(a/x).
+ *   ∃E      — Existential Elim       cite: [m,n]
+ *             From ∃xφ (line m) and φ(a/x)→ψ (line n), derive ψ,
+ *             provided a occurs neither in ψ nor in ∃xφ nor in any undischarged assumption.
  *
- * Proof text format (one line per step):
- *   <formula>  <rule>  <citations>
- *
- * Subproofs: indentation level (number of leading spaces / tabs) determines depth.
- * A line at a deeper indent than the previous opens a subproof; returning to a
- * shallower indent closes it.
- *
- * Special formula: ⊥  (type as _|_ or bot or bottom or false or ⊥)
+ * ⊥ aliases: _|_  bot  bottom  false  ⊥  \bot
  */
 
 // ── Formula equality ──────────────────────────────────────────────────────────
-// Compare two AST nodes structurally
 function astEqual(a, b) {
   if (!a || !b) return false;
   if (a.type !== b.type) return false;
   switch (a.type) {
-    case 'letter': return a.name === b.name;
+    case 'letter': return a.name === b.name && a.sub === b.sub;
+    case 'atom':   return a.pred === b.pred && a.args.length === b.args.length
+                       && a.args.every((v, i) => v === b.args[i]);
     case 'bot':    return true;
     case 'neg':    return astEqual(a.arg, b.arg);
     case 'and': case 'or': case 'imp':
       return astEqual(a.left, b.left) && astEqual(a.right, b.right);
+    case 'forall': case 'exists':
+      return a.var === b.var && astEqual(a.arg, b.arg);
     default: return false;
   }
 }
 
 function formulaStr(ast) {
   if (!ast) return '?';
-  if (ast.type === 'bot') return '⊥';
   return prettyPrint(ast, true);
 }
 
 // ── Formula parsing helper ───────────────────────────────────────────────────
-// Replace bot aliases inside a formula string with the ⊥ token the parser can
-// handle, then parse. Returns an AST node.
 const BOT_ALIASES_RE = /\b(_\|_|bot|bottom|false|\\bot)\b/gi;
 const FULL_BOT_RE    = /^(_\|_|bot|bottom|false|⊥|\\bot)$/i;
 
 function parseFormula(raw) {
   const s = raw.trim();
-  // Pure bot
   if (FULL_BOT_RE.test(s)) return { type: 'bot' };
-  // Bot inside a larger formula — substitute with a temporary placeholder
-  // that the parser CAN handle: we extend parse() by pre-substituting _|_ → ⊥
-  // Since the parser doesn't handle ⊥ at all, we need a different strategy:
-  // walk the formula string and replace _|_ with a sentinel letter, parse,
-  // then patch the AST.
-  const BOT_SENTINEL = 's'; // We'll treat this letter as bot in post-processing
-  // Only substitute when bot alias appears in the string
+
   if (BOT_ALIASES_RE.test(s)) {
     BOT_ALIASES_RE.lastIndex = 0;
-    const patched = s.replace(BOT_ALIASES_RE, '__BOT__');
-    // We'll parse by replacing __BOT__ with a unique fake letter and fix after
-    // Actually simpler: recursively build AST by splitting on connectives.
-    // Easiest: use a tag that looks like a valid letter token to the parser.
-    // The parser allows p,q,r,s,t with optional numeric subscripts.
-    // Let's pre-process: replace bot alias with 's9999' (unlikely to clash) and
-    // post-process the AST.
     const FAKE = 's9999';
     const patchedStr = s.replace(BOT_ALIASES_RE, FAKE);
     BOT_ALIASES_RE.lastIndex = 0;
     let ast;
     try { ast = parse(patchedStr); }
     catch(e) { try { ast = parse('(' + patchedStr + ')'); } catch(e2) { throw new Error('Cannot parse: ' + s); } }
-    // Replace all letter nodes with name 's' and sub '9999' with bot
     function patchBot(node) {
       if (!node) return node;
       if (node.type === 'letter' && node.name === 's' && node.sub === '9999') return { type: 'bot' };
       if (node.type === 'neg') return { type: 'neg', arg: patchBot(node.arg) };
-      if (node.type === 'and' || node.type === 'or' || node.type === 'imp')
+      if (node.type === 'forall' || node.type === 'exists') return { ...node, arg: patchBot(node.arg) };
+      if (['and','or','imp'].includes(node.type))
         return { ...node, left: patchBot(node.left), right: patchBot(node.right) };
       return node;
     }
     return patchBot(ast);
   }
-  // Normal parse with unofficial-form fallback
   try { return parse(s); }
   catch(e) { return parse('(' + s + ')'); }
 }
 
+// ── Substitution helpers ──────────────────────────────────────────────────────
+
+/**
+ * Substitute constant `con` for all free occurrences of variable `vr` in `node`.
+ * Returns a new AST (original unchanged).
+ */
+function substituteVar(node, vr, con) {
+  if (!node) return node;
+  switch (node.type) {
+    case 'atom': {
+      const newArgs = node.args.map(a => a === vr ? con : a);
+      return { type: 'atom', pred: node.pred, args: newArgs };
+    }
+    case 'letter': case 'bot': return node;
+    case 'neg': return { type: 'neg', arg: substituteVar(node.arg, vr, con) };
+    case 'and': case 'or': case 'imp':
+      return { ...node, left: substituteVar(node.left, vr, con), right: substituteVar(node.right, vr, con) };
+    case 'forall': case 'exists':
+      // If the quantifier binds vr, stop substituting (vr is bound inside)
+      if (node.var === vr) return node;
+      return { ...node, arg: substituteVar(node.arg, vr, con) };
+    default: return node;
+  }
+}
+
+/**
+ * Substitute variable `vr` for all occurrences of constant `con` in `node`.
+ * Used for ∀I / ∃I construction: given φ(a/x), recover φ by replacing a with x.
+ */
+function substituteCon(node, con, vr) {
+  if (!node) return node;
+  switch (node.type) {
+    case 'atom': {
+      const newArgs = node.args.map(a => a === con ? vr : a);
+      return { type: 'atom', pred: node.pred, args: newArgs };
+    }
+    case 'letter': case 'bot': return node;
+    case 'neg': return { type: 'neg', arg: substituteCon(node.arg, con, vr) };
+    case 'and': case 'or': case 'imp':
+      return { ...node, left: substituteCon(node.left, con, vr), right: substituteCon(node.right, con, vr) };
+    case 'forall': case 'exists':
+      // Don't substitute inside a quantifier that binds the target variable
+      if (node.var === vr) return node;
+      return { ...node, arg: substituteCon(node.arg, con, vr) };
+    default: return node;
+  }
+}
+
+/**
+ * Collect all constants occurring anywhere in an AST.
+ */
+function constsInNode(node) {
+  const s = new Set();
+  function walk(n) {
+    if (!n) return;
+    if (n.type === 'atom') { n.args.forEach(a => { if (/^[abcde]$/.test(a)) s.add(a); }); return; }
+    if (n.type === 'neg' || n.type === 'forall' || n.type === 'exists') { walk(n.arg); return; }
+    if (n.type === 'letter' || n.type === 'bot') return;
+    walk(n.left); walk(n.right);
+  }
+  walk(node);
+  return s;
+}
+
+/**
+ * Check whether constant `con` occurs anywhere in AST `node`.
+ */
+function constOccurs(node, con) {
+  return constsInNode(node).has(con);
+}
+
+/**
+ * Check whether variable `vr` occurs free in `node`.
+ */
+function varFree(node, vr) {
+  if (!node) return false;
+  switch (node.type) {
+    case 'atom': return node.args.includes(vr);
+    case 'letter': case 'bot': return false;
+    case 'neg': return varFree(node.arg, vr);
+    case 'and': case 'or': case 'imp':
+      return varFree(node.left, vr) || varFree(node.right, vr);
+    case 'forall': case 'exists':
+      if (node.var === vr) return false;   // bound here
+      return varFree(node.arg, vr);
+    default: return false;
+  }
+}
+
 // ── Rule name normalisation ───────────────────────────────────────────────────
 function normaliseRule(raw) {
-  const s = raw.trim()
-    .replace(/\/\\/g, '∧').replace(/\\/g, '∧')
-    .replace(/&/g,    '∧')
-    .replace(/\\\//g, '∨').replace(/\|/g, '∨')
-    .replace(/->/g,   '→').replace(/=>/g, '→')
-    .replace(/[~\-](?=I|E)/g, '¬')
-    .replace(/^~/,    '¬')
+  // Key-building: normalise ASCII shorthands, uppercase, strip spaces
+  const key = raw.trim()
+    .replace(/\/\\/g, '∧').replace(/&/g, '∧')
+    .replace(/\\\//g, '∨').replace(/\|(?!_)/g, '∨')
+    .replace(/->/g, '→').replace(/=>/g, '→')
+    .replace(/[~]/g, '¬')
+    .replace(/\\?forall\b/gi, '∀')
+    .replace(/\\?exists\b/gi, '∃')
+    .replace(/\\?all\b/gi, '∀')
+    .replace(/A\b/g, v => v) // don't mangle standalone A
     .toUpperCase()
-    // After upper-casing, restore unicode that got mangled
-    .replace(/∧/g, '∧').replace(/∨/g, '∨').replace(/→/g, '→').replace(/¬/g, '¬');
+    .replace(/\s+/g, '');
 
-  // Map common aliases
   const MAP = {
     'R': 'R', 'REP': 'R', 'REPETITION': 'R',
     '∧I': '∧I', 'AI': '∧I', 'ANDI': '∧I', 'CONJ': '∧I', 'CONJI': '∧I',
@@ -127,25 +203,18 @@ function normaliseRule(raw) {
     'DN': 'DN', 'DNE': 'DN', 'DNI': 'DN', 'DOUBLENEG': 'DN',
     'P': 'P', 'PR': 'P', 'PREM': 'P', 'PREMISE': 'P',
     'A': 'A', 'AS': 'A', 'ASS': 'A', 'ASSUMPTION': 'A', 'ASSUME': 'A',
+    // Quantifier rules
+    '∀E': '∀E', 'AE2': '∀E', 'UE': '∀E', 'FORALLE': '∀E', 'UI': '∀E',
+    '∀I': '∀I', 'AI2': '∀I', 'UI2': '∀I', 'FORALLI': '∀I', 'UG': '∀I',
+    '∃I': '∃I', 'EI': '∃I', 'EXISTSI': '∃I', 'EG': '∃I',
+    '∃E': '∃E', 'EE': '∃E', 'EXISTSE': '∃E', 'ES': '∃E',
   };
 
-  // Normalise the raw string before lookup
-  const key = raw.trim()
-    .replace(/\/\\/g, '∧').replace(/&/g, '∧')
-    .replace(/\\\//g, '∨').replace(/\|(?!_)/g, '∨')
-    .replace(/->/g, '→').replace(/=>/g, '→')
-    .replace(/[~]/g, '¬')
-    .toUpperCase()
-    .replace(/\s+/g, '');
-
-  return MAP[key] || MAP[s] || null;
+  return MAP[key] || null;
 }
 
 // ── Parse a single proof line ─────────────────────────────────────────────────
-// Returns { formula, rule, citations, indent, raw, lineNo }
-// formula is an AST node (or null for blank lines)
 function parseProofLine(rawLine, lineNo) {
-  // Measure indentation (spaces + tabs, tab = 2 spaces)
   const indent = (rawLine.match(/^(\s*)/)[1] || '').replace(/\t/g, '  ').length;
   const text   = rawLine.trim();
 
@@ -153,30 +222,15 @@ function parseProofLine(rawLine, lineNo) {
     return { blank: true, indent, raw: rawLine, lineNo };
   }
 
-  // Line format:  <formula>  <rule>  <citations>
-  // The formula may contain spaces (e.g. "(p ∧ q)"), so we tokenize from the
-  // right. Citation material is made of digits, commas, and dashes only
-  // (e.g. "1, 2, 3" or "2-6"). The rule is the single token immediately
-  // before the citation material; the formula is everything before the rule.
-  //
-  // Citation syntax (required):
-  //   • separate line numbers with commas  →  ∧I 1, 2     ∨E 1, 4, 7
-  //   • cite a subproof with a dash range  →  →I 2-6      ¬I 2-3
-  // A space-separated list such as "∧I 1 2" is rejected with a hint.
-
-  // Collapse spaced / unicode dashes between digits into a single "m-n" token
-  // so a range like "2 – 3" or "2—3" stays together after whitespace splitting.
+  // Collapse spaced / unicode dashes between digits
   const normText = text.replace(/(\d+)\s*[\u2010-\u2015\-]\s*(\d+)/g, '$1-$2');
   const tokens = normText.split(/\s+/).filter(Boolean);
 
-  // A citation fragment is digits, commas, and dashes only (no letters/symbols).
   const isCitFrag = (t) => /^[\d,\-]+$/.test(t);
 
-  // Find where citations start (trailing fragments).
   let citStart = tokens.length;
   while (citStart > 0 && isCitFrag(tokens[citStart - 1])) citStart--;
 
-  // The token just before the citations is the rule.
   if (citStart === 0) {
     return { error: 'No rule found', raw: rawLine, lineNo, indent };
   }
@@ -184,7 +238,6 @@ function parseProofLine(rawLine, lineNo) {
   const ruleRaw = tokens[citStart - 1];
   const rule    = normaliseRule(ruleRaw);
 
-  // Parse the citation material into line numbers + subproof ranges.
   const INT_RE   = /^\d+$/;
   const RANGE_RE = /^(\d+)-(\d+)$/;
   const citations = [];
@@ -204,7 +257,6 @@ function parseProofLine(rawLine, lineNo) {
       break;
     }
   }
-  // Validate any range: m must be strictly less than n
   for (const r of ranges) {
     if (r.m >= r.n) citParseErr = `Subproof range ${r.m}–${r.n} is invalid: the assumption line must come before the last line.`;
   }
@@ -217,12 +269,11 @@ function parseProofLine(rawLine, lineNo) {
 
   const formulaRaw = formulaTokens.join(' ');
 
-  // Parse the formula — uses parseFormula which handles ⊥ aliases and unofficial forms
   let ast;
   try {
     ast = parseFormula(formulaRaw);
   } catch (e) {
-    return { error: 'Cannot parse formula: ' + formulaRaw, raw: rawLine, lineNo, indent };
+    return { error: 'Cannot parse formula: ' + formulaRaw + (e.message ? ' — ' + e.message : ''), raw: rawLine, lineNo, indent };
   }
 
   if (!rule) {
@@ -237,18 +288,7 @@ function parseProofLine(rawLine, lineNo) {
 }
 
 // ── Subproof structure ────────────────────────────────────────────────────────
-/**
- * Given an array of parsed lines, build a stack-based subproof structure.
- * Returns lines annotated with:
- *   line.depth    — nesting depth (0 = main proof)
- *   line.subproofOpen  — true if this line opens a new subproof (assumption)
- *   line.subproofClose — depth levels closed after this line
- *
- * Also returns a flat array of { lineNo, depth, formula, rule, citations, error }
- */
 function buildStructure(parsedLines) {
-  // Assign depth from indentation
-  // We use a stack of indent levels
   const indentStack = [0];
   const lines = [];
   let proofLineNo = 0;
@@ -258,12 +298,10 @@ function buildStructure(parsedLines) {
 
     const indent = pl.indent;
 
-    // Pop stack while top indent > current (closing subproofs)
     while (indentStack.length > 1 && indentStack[indentStack.length - 1] > indent) {
       indentStack.pop();
     }
 
-    // If current indent > top, push (opening subproof)
     if (indent > indentStack[indentStack.length - 1]) {
       indentStack.push(indent);
     }
@@ -277,35 +315,16 @@ function buildStructure(parsedLines) {
 }
 
 // ── Availability check ────────────────────────────────────────────────────────
-/**
- * A line at index i is "available" from line at index j if:
- *   - lines[j].depth <= lines[i].depth (not inside a closed subproof relative to i)
- *   - lines[j] has not been discharged before i
- *
- * A subproof from line s to line e (depth d+1) is discharged at the →I or ¬I
- * line that cites it. After that point, individual lines within the subproof
- * are no longer available.
- *
- * We track discharged ranges: set of [start, end] pairs (by proofLineNo).
- */
 function isAvailable(targetIdx, citedIdx, lines, dischargedRanges) {
   const cited  = lines[citedIdx];
   const target = lines[targetIdx];
 
   if (!cited || !target) return false;
-
-  // Can't cite a future line
   if (cited.proofLineNo >= target.proofLineNo) return false;
-
-  // Cited line must be at same depth or shallower — unless it's inside a
-  // subproof that's still open (depth > target.depth means it's in a deeper
-  // subproof that has NOT yet been discharged = still open)
   if (cited.depth > target.depth) return false;
 
-  // Check if cited line has been discharged
   for (const [start, end] of dischargedRanges) {
     if (cited.proofLineNo >= start && cited.proofLineNo <= end) {
-      // It's inside a discharged subproof — only allowed if this is the →I/¬I line itself
       return false;
     }
   }
@@ -314,17 +333,11 @@ function isAvailable(targetIdx, citedIdx, lines, dischargedRanges) {
 }
 
 // ── Core validator ────────────────────────────────────────────────────────────
-/**
- * Validate an array of parsed proof lines against a set of premises.
- * premises: AST[] — the sequent's premise list
- * Returns: results[], one per non-blank line, with { ok, error, proofLineNo, depth, formula, rule, citations }
- */
 function validateProof(parsedLines, premises) {
-  const lines          = buildStructure(parsedLines);
-  const dischargedRanges = []; // [startProofLineNo, endProofLineNo]
-  const results        = [];
+  const lines           = buildStructure(parsedLines);
+  const dischargedRanges = [];
+  const results         = [];
 
-  // Index lines by proofLineNo for fast lookup
   const byNo = {};
   lines.forEach((l, i) => { byNo[l.proofLineNo] = i; });
 
@@ -349,6 +362,31 @@ function validateProof(parsedLines, premises) {
     return null;
   }
 
+  /**
+   * Collect all constants appearing in undischarged assumption lines
+   * visible from the current proof index (fromIdx).
+   */
+  function undischargedAssumptionConsts(fromIdx) {
+    const consts = new Set();
+    for (let i = 0; i < fromIdx; i++) {
+      const l = lines[i];
+      if (l.rule !== 'A') continue;
+      // Is this assumption currently undischarged (still open) from fromIdx?
+      if (!isAvailable(fromIdx, i, lines, dischargedRanges)) continue;
+      constsInNode(l.formula).forEach(c => consts.add(c));
+    }
+    return consts;
+  }
+
+  /**
+   * Also collect constants in the premises (treated as always open).
+   */
+  function premiseConsts() {
+    const consts = new Set();
+    premises.forEach(p => constsInNode(p).forEach(c => consts.add(c)));
+    return consts;
+  }
+
   lines.forEach((line, idx) => {
     if (line.error) {
       results.push({ ...line, ok: false });
@@ -359,8 +397,7 @@ function validateProof(parsedLines, premises) {
     let ok = false;
     let errMsg = null;
 
-    // Subproof ranges (m–n) are ONLY valid for →I and ¬I. Any other rule
-    // that receives a dash range is a mistake.
+    // Subproof ranges only valid for →I and ¬I
     if (ranges && ranges.length && rule !== '→I' && rule !== '¬I') {
       results.push({ ...line, ok: false, error: `${rule} does not take a subproof range (m–n). Cite separate line numbers instead.` });
       return;
@@ -371,11 +408,9 @@ function validateProof(parsedLines, premises) {
     switch (rule) {
 
       case 'P': {
-        // Must be an actual premise, depth 0, no citations
         const e = citCheck(0);
         if (e) { errMsg = e; break; }
         if (depth !== 0) { errMsg = 'Premises must be at the top level'; break; }
-        // Check formula matches one of the premises
         const match = premises.some(p => astEqual(p, formula));
         if (!match) errMsg = formulaStr(formula) + ' is not a listed premise';
         else ok = true;
@@ -383,12 +418,9 @@ function validateProof(parsedLines, premises) {
       }
 
       case 'A': {
-        // Assumption — opens a subproof; no citations
         const e = citCheck(0);
         if (e) { errMsg = e; break; }
         if (depth === 0) { errMsg = 'Assumptions must be inside a subproof (indent the line)'; break; }
-        // The previous line at depth-1 or this is the first line at this depth
-        // Any formula is valid as an assumption
         ok = true;
         break;
       }
@@ -428,7 +460,6 @@ function validateProof(parsedLines, premises) {
       }
 
       case '→E': {
-        // MP: need φ→ψ and φ, derive ψ. Citations can be in either order.
         const e = citCheck(2);
         if (e) { errMsg = e; break; }
         const a = getLine(citations[0]), b = getLine(citations[1]);
@@ -446,9 +477,7 @@ function validateProof(parsedLines, premises) {
       }
 
       case '→I': {
-        // Subproof: cite range [m–n] where m is assumption (φ) and n is last line (ψ)
-        // Result must be φ→ψ. A dash range is REQUIRED (not two bare line numbers).
-        if (citations.length !== 0) { errMsg = `Use a dash for subproofs: write “→I ${citations[0]}–${citations[1] || citations[0]+1}”, not “→I ${citations.join(' ')}”.`; break; }
+        if (citations.length !== 0) { errMsg = `Use a dash for subproofs: write "→I ${citations[0]}–${citations[1] || citations[0]+1}", not "→I ${citations.join(' ')}".`; break; }
         if (!ranges || ranges.length !== 1) { errMsg = '→I requires a subproof range m–n (e.g. →I 2–3).'; break; }
         const r = ranges[0];
         if (formula.type !== 'imp') { errMsg = 'Result must be a conditional (φ→ψ)'; break; }
@@ -463,7 +492,6 @@ function validateProof(parsedLines, premises) {
         else if (!astEqual(lastLine.formula, formula.right))
           errMsg = `Last subproof line (${r.n}) must match consequent ${formulaStr(formula.right)}`;
         else {
-          // Discharge the subproof lines between assumeLine and lastLine
           dischargedRanges.push([assumeLine.proofLineNo, lastLine.proofLineNo]);
           ok = true;
         }
@@ -482,14 +510,12 @@ function validateProof(parsedLines, premises) {
       }
 
       case '∨E': {
-        // Cite: [d, c1, c2] where d is φ∨ψ, c1 is φ→χ, c2 is ψ→χ (any order among c1,c2)
         const e = citCheck(3);
         if (e) { errMsg = e; break; }
         const [n1, n2, n3] = citations;
         const l1 = getLine(n1), l2 = getLine(n2), l3 = getLine(n3);
         if (!l1 || !l2 || !l3) { errMsg = 'Citation not found'; break; }
 
-        // Find the disjunction among the three cited lines
         let disjLine, cond1Line, cond2Line;
         const candidates = [l1, l2, l3];
         for (let i = 0; i < 3; i++) {
@@ -507,7 +533,6 @@ function validateProof(parsedLines, premises) {
         const phi = disjLine.formula.left;
         const psi = disjLine.formula.right;
 
-        // cond1 should be φ→χ or ψ→χ; match accordingly
         let matched = false;
         for (const [c1, c2] of [[cond1Line, cond2Line], [cond2Line, cond1Line]]) {
           if (astEqual(c1.formula.left, phi) && astEqual(c2.formula.left, psi)
@@ -522,27 +547,23 @@ function validateProof(parsedLines, premises) {
       }
 
       case '¬E': {
-        // Cite: [m, n] — one is φ, other is ¬φ; result is ⊥
         const e = citCheck(2);
         if (e) { errMsg = e; break; }
         if (formula.type !== 'bot') { errMsg = 'Result of ¬E must be ⊥'; break; }
         const a = getLine(citations[0]), b = getLine(citations[1]);
         if (!a || !b) { errMsg = 'Citation not found'; break; }
-        // Find which is φ and which is ¬φ
-        let phiLine, negLine;
+        let phiLine;
         if (b.formula.type === 'neg' && astEqual(b.formula.arg, a.formula))
-          { phiLine = a; negLine = b; }
+          phiLine = a;
         else if (a.formula.type === 'neg' && astEqual(a.formula.arg, b.formula))
-          { phiLine = b; negLine = a; }
+          phiLine = b;
         else errMsg = `Lines ${citations[0]} and ${citations[1]} are not a formula and its negation`;
         if (phiLine) ok = true;
         break;
       }
 
       case '¬I': {
-        // Subproof ending in ⊥: cite range [m–n] where m is assumption (φ), n is ⊥
-        // Result: ¬φ. A dash range is REQUIRED (not two bare line numbers).
-        if (citations.length !== 0) { errMsg = `Use a dash for subproofs: write “¬I ${citations[0]}–${citations[1] || citations[0]+1}”, not “¬I ${citations.join(' ')}”.`; break; }
+        if (citations.length !== 0) { errMsg = `Use a dash for subproofs: write "¬I ${citations[0]}–${citations[1] || citations[0]+1}", not "¬I ${citations.join(' ')}".`; break; }
         if (!ranges || ranges.length !== 1) { errMsg = '¬I requires a subproof range m–n (e.g. ¬I 3–4).'; break; }
         const r = ranges[0];
         if (formula.type !== 'neg') { errMsg = 'Result of ¬I must be a negation (¬φ)'; break; }
@@ -563,7 +584,6 @@ function validateProof(parsedLines, premises) {
       }
 
       case 'EFSQ': {
-        // From ⊥, derive anything
         const e = citCheck(1);
         if (e) { errMsg = e; break; }
         const src = getLine(citations[0]);
@@ -574,18 +594,197 @@ function validateProof(parsedLines, premises) {
       }
 
       case 'DN': {
-        // From ¬¬φ derive φ, or from φ derive ¬¬φ
         const e = citCheck(1);
         if (e) { errMsg = e; break; }
         const src = getLine(citations[0]);
         if (!src) { errMsg = 'Citation not found'; break; }
-        // ¬¬φ → φ
         if (src.formula.type === 'neg' && src.formula.arg.type === 'neg'
             && astEqual(src.formula.arg.arg, formula)) { ok = true; break; }
-        // φ → ¬¬φ
         if (formula.type === 'neg' && formula.arg.type === 'neg'
             && astEqual(formula.arg.arg, src.formula)) { ok = true; break; }
         errMsg = `DN requires ¬¬φ→φ or φ→¬¬φ`;
+        break;
+      }
+
+      // ── Quantifier rules ──────────────────────────────────────────────────
+
+      case '∀E': {
+        // From ∀xφ (cited line), derive φ(a/x) for some constant a.
+        const e = citCheck(1);
+        if (e) { errMsg = e; break; }
+        const src = getLine(citations[0]);
+        if (!src) { errMsg = 'Citation not found'; break; }
+        if (src.formula.type !== 'forall') {
+          errMsg = `Line ${citations[0]} is not a universally quantified formula (∀xφ)`;
+          break;
+        }
+        // Try each constant: does substituting it into φ give the result?
+        const vr = src.formula.var;
+        const phi = src.formula.arg;
+        // Also try substituting the bound variable with itself (i.e. the body unchanged — unusual but allowed)
+        const candidates = ['a','b','c','d','e'];
+        let matched = false;
+        for (const con of candidates) {
+          const instance = substituteVar(phi, vr, con);
+          if (astEqual(instance, formula)) { matched = true; break; }
+        }
+        // Also allow keeping the variable (instantiating with itself is not standard, skip)
+        if (!matched) {
+          errMsg = `${formulaStr(formula)} is not an instance of ${formulaStr(src.formula)} — substitute a constant (a, b, c, d, or e) for ${vr}`;
+        } else ok = true;
+        break;
+      }
+
+      case '∀I': {
+        // From φ(a/x) (cited line), derive ∀xφ.
+        // Freshness: a must not occur in ∀xφ, nor in any undischarged assumption.
+        const e = citCheck(1);
+        if (e) { errMsg = e; break; }
+        if (formula.type !== 'forall') {
+          errMsg = 'Result of ∀I must be a universally quantified formula (∀xφ)';
+          break;
+        }
+        const src = getLine(citations[0]);
+        if (!src) { errMsg = 'Citation not found'; break; }
+
+        const vr  = formula.var;
+        const phi = formula.arg;   // φ — the body of the ∀ formula
+
+        // Find a constant a such that: φ(a/x) matches the cited formula.
+        // We try every constant that actually appears in the cited formula.
+        const candidateConsts = [...constsInNode(src.formula)];
+        if (candidateConsts.length === 0) {
+          // The cited line has no constants — it might equal the body with x free,
+          // which would mean using the variable as a pseudo-constant (not standard).
+          errMsg = `∀I requires citing a line with a constant that can be generalised over`;
+          break;
+        }
+
+        let witnessCon = null;
+        for (const con of candidateConsts) {
+          const candidate = substituteVar(phi, vr, con);
+          if (astEqual(candidate, src.formula)) {
+            witnessCon = con;
+            break;
+          }
+        }
+
+        if (!witnessCon) {
+          errMsg = `Line ${citations[0]} (${formulaStr(src.formula)}) is not an instance of ${formulaStr(formula)} — no constant can be generalised to get ${formulaStr(formula)}`;
+          break;
+        }
+
+        // Freshness check 1: a must not occur in ∀xφ (the result formula)
+        if (constOccurs(formula, witnessCon)) {
+          errMsg = `Constant '${witnessCon}' occurs in ${formulaStr(formula)}, so it cannot be the constant used for ∀I (it would remain free in the body)`;
+          break;
+        }
+
+        // Freshness check 2: a must not occur in any undischarged assumption
+        const assumpConsts = undischargedAssumptionConsts(idx);
+        if (assumpConsts.has(witnessCon)) {
+          errMsg = `Constant '${witnessCon}' occurs in an undischarged assumption, so ∀I is not applicable`;
+          break;
+        }
+        ok = true;
+        break;
+      }
+
+      case '∃I': {
+        // From φ(a/x) (cited line), derive ∃xφ.
+        const e = citCheck(1);
+        if (e) { errMsg = e; break; }
+        if (formula.type !== 'exists') {
+          errMsg = 'Result of ∃I must be an existentially quantified formula (∃xφ)';
+          break;
+        }
+        const src = getLine(citations[0]);
+        if (!src) { errMsg = 'Citation not found'; break; }
+
+        const vr  = formula.var;
+        const phi = formula.arg;
+
+        // Find a constant a in the cited line such that φ(a/x) = cited formula
+        const candidateConsts = [...constsInNode(src.formula)];
+        let matched = false;
+        for (const con of candidateConsts) {
+          const instance = substituteVar(phi, vr, con);
+          if (astEqual(instance, src.formula)) { matched = true; break; }
+        }
+
+        if (!matched) {
+          // Maybe the cited formula equals the body with x free (no constant involved)
+          // That's not standard; give an informative error.
+          errMsg = `Line ${citations[0]} (${formulaStr(src.formula)}) is not an instance of ${formulaStr(formula)} — no constant in that line substitutes for ${vr} to give ${formulaStr(phi)}`;
+          break;
+        }
+        ok = true;
+        break;
+      }
+
+      case '∃E': {
+        // From ∃xφ (line m) and φ(a/x)→ψ (line n), derive ψ.
+        // a must not occur in ψ, ∃xφ, or any undischarged assumption.
+        const e = citCheck(2);
+        if (e) { errMsg = e; break; }
+        const lineA = getLine(citations[0]);
+        const lineB = getLine(citations[1]);
+        if (!lineA || !lineB) { errMsg = 'Citation not found'; break; }
+
+        // Identify which is ∃xφ and which is φ(a/x)→ψ
+        let existsLine, condLine;
+        if (lineA.formula.type === 'exists' && lineB.formula.type === 'imp') {
+          existsLine = lineA; condLine = lineB;
+        } else if (lineB.formula.type === 'exists' && lineA.formula.type === 'imp') {
+          existsLine = lineB; condLine = lineA;
+        } else {
+          errMsg = `∃E requires one cited line to be ∃xφ and the other to be φ(a/x)→ψ. ` +
+                   `Line ${citations[0]} is a ${lineA.formula.type}, line ${citations[1]} is a ${lineB.formula.type}.`;
+          break;
+        }
+
+        const vr  = existsLine.formula.var;
+        const phi = existsLine.formula.arg;   // φ
+        const ant = condLine.formula.left;    // φ(a/x) — antecedent of the conditional
+        const con = condLine.formula.right;   // ψ — consequent, must equal result
+
+        // ψ must equal the result formula
+        if (!astEqual(con, formula)) {
+          errMsg = `Consequent of line ${condLine.proofLineNo} is ${formulaStr(con)}, but the result here is ${formulaStr(formula)}`;
+          break;
+        }
+
+        // Verify ant = φ(a/x) for some constant a
+        const candidateConsts = [...constsInNode(ant)];
+        let witnessCon = null;
+        for (const c of candidateConsts) {
+          const instance = substituteVar(phi, vr, c);
+          if (astEqual(instance, ant)) { witnessCon = c; break; }
+        }
+        if (!witnessCon) {
+          errMsg = `Antecedent of line ${condLine.proofLineNo} (${formulaStr(ant)}) is not an instance of ${formulaStr(existsLine.formula)} — no constant substitutes for ${vr} to give ${formulaStr(ant)}`;
+          break;
+        }
+
+        // Freshness check 1: a must not occur in ψ (the result)
+        if (constOccurs(formula, witnessCon)) {
+          errMsg = `Constant '${witnessCon}' occurs in the result ${formulaStr(formula)}, so ∃E is not applicable`;
+          break;
+        }
+
+        // Freshness check 2: a must not occur in ∃xφ
+        if (constOccurs(existsLine.formula, witnessCon)) {
+          errMsg = `Constant '${witnessCon}' occurs in ${formulaStr(existsLine.formula)}, so ∃E is not applicable`;
+          break;
+        }
+
+        // Freshness check 3: a must not occur in any undischarged assumption
+        const assumpConsts = undischargedAssumptionConsts(idx);
+        if (assumpConsts.has(witnessCon)) {
+          errMsg = `Constant '${witnessCon}' occurs in an undischarged assumption, so ∃E is not applicable`;
+          break;
+        }
+        ok = true;
         break;
       }
 
@@ -600,12 +799,11 @@ function validateProof(parsedLines, premises) {
 }
 
 /**
- * Parse proof text into raw line objects, then validate.
+ * Parse proof text and validate.
  * premises: string[] — raw formula strings from sequent input
- * Returns { lines: result[], complete: bool, error: string|null }
+ * Returns { lines: result[], complete: bool, premises, conclusion }
  */
 function checkProof(proofText, premiseStrings, conclusionString) {
-  // Parse premises
   const premises = [];
   for (const s of premiseStrings) {
     const t = s.trim();
@@ -614,21 +812,16 @@ function checkProof(proofText, premiseStrings, conclusionString) {
     catch (e) { return { lines: [], complete: false, error: `Cannot parse premise: ${t}` }; }
   }
 
-  // Parse conclusion
   let conclusion = null;
   if (conclusionString && conclusionString.trim()) {
     try { conclusion = parseFormula(conclusionString.trim()); }
     catch (e) { return { lines: [], complete: false, error: `Cannot parse conclusion: ${conclusionString}` }; }
   }
 
-  // Parse proof lines
-  const rawLines = proofText.split('\n');
+  const rawLines   = proofText.split('\n');
   const parsedLines = rawLines.map((l, i) => parseProofLine(l, i + 1));
+  const results    = validateProof(parsedLines, premises);
 
-  // Validate
-  const results = validateProof(parsedLines, premises);
-
-  // Check completeness: last non-blank line at depth 0 must match conclusion
   const mainLines = results.filter(l => l.depth === 0 && !l.blank);
   const lastMain  = mainLines[mainLines.length - 1];
   const allOk     = results.every(l => l.ok);

@@ -315,6 +315,26 @@ q    EFSQ  3` },
     proof:
 `¬¬p  P
 p    DN  1` },
+  // ── Quantifier rule illustrations ────────────────────────────────────────
+  { label: '∀E', premises: '∀xPx', conclusion: 'Pa',
+    proof:
+`∀xPx  P
+Pa    ∀E  1` },
+  { label: '∀I', premises: '', conclusion: '∀x(Px→Px)',
+    proof:
+`  Pa       A
+  Pa       R  1
+Pa→Pa     →I  1–2
+∀x(Px→Px)  ∀I  3` },
+  { label: '∃I', premises: 'Pa', conclusion: '∃xPx',
+    proof:
+`Pa    P
+∃xPx  ∃I  1` },
+  { label: '∃E', premises: '∃xPx, Pa→∃yQy', conclusion: '∃yQy',
+    proof:
+`∃xPx      P
+Pa→∃yQy   P
+∃yQy      ∃E  1, 2` },
 ];
 
 const PROOF_EXAMPLES = [
@@ -461,6 +481,68 @@ p→q  →I  2–4`,
   ⊥        ¬E  6, 1
 ¬¬(p∨¬p)   ¬I  1–7
 p∨¬p       DN  8`,
+  },
+  // ── Quantificational logic examples (Ch. 10) ────────────────────────────
+  {
+    label: '10.1: ¬∃xPx ⊢ ¬∀xPx',
+    premises: '∀xPx→∃xPx, ¬∃xPx',
+    conclusion: '¬∀xPx',
+    proof:
+`∀xPx→∃xPx  P
+¬∃xPx    P
+  ∀xPx    A
+  ∃xPx    →E  1, 3
+  ⊥       ¬E  4, 2
+¬∀xPx     ¬I  3–5`,
+  },
+  {
+    label: '10.3: ∀x∀y(Px→Qy), Pa ⊢ Qb',
+    premises: '∀x∀y(Px→Qy), Pa',
+    conclusion: 'Qb',
+    proof:
+`∀x∀y(Px→Qy)  P
+Pa            P
+∀y(Pa→Qy)    ∀E  1
+Pa→Qb          ∀E  3
+Qb            →E  4, 2`,
+  },
+  {
+    label: '10.5: ∀x(Px→Qx), ∀x(Qx→Rx) ⊢ ∀x(Px→Rx)',
+    premises: '∀x(Px→Qx), ∀x(Qx→Rx)',
+    conclusion: '∀x(Px→Rx)',
+    proof:
+`∀x(Px→Qx)  P
+∀x(Qx→Rx)  P
+  Pa       A
+  Pa→Qa   ∀E  1
+  Qa→Ra   ∀E  2
+  Qa       →E  4, 3
+  Ra       →E  5, 6
+Pa→Ra      →I  3–7
+∀x(Px→Rx)  ∀I  8`,
+  },
+  {
+    label: '10.7: Rab ⊢ ∃x∃yRxy',
+    premises: 'Rab',
+    conclusion: '∃x∃yRxy',
+    proof:
+`Rab      P
+∃yRay   ∃I  1
+∃x∃yRxy  ∃I  2`,
+  },
+  {
+    label: '10.10: ∀x(Px→Qx), ∃yPy ⊢ ∃zQz',
+    premises: '∀x(Px→Qx), ∃yPy',
+    conclusion: '∃zQz',
+    proof:
+`∀x(Px→Qx)  P
+∃yPy         P
+Pa→Qa          ∀E  1
+  Pa          A
+  Qa          →E  3, 4
+  ∃zQz        ∃I  5
+Pa→∃zQz        →I  4–6
+∃zQz           ∃E  2, 7`,
   },
 ];
 

@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Proof Checker — Propositional Logic</title>
-  <link rel="stylesheet" href="style.css?v=18" />
+  <title>Proof Checker — Logic</title>
+  <link rel="stylesheet" href="style.css?v=19" />
 </head>
 <body>
 
@@ -13,7 +13,7 @@
     <div class="header-inner">
       <div class="logo">
         <span class="logo-text">Proof Checker</span>
-        <span class="logo-subtitle">Propositional Logic</span>
+        <span class="logo-subtitle">Propositional &amp; Quantificational Logic</span>
       </div>
       <div class="header-right">
         <button type="button" id="copy-link-btn" class="copy-link-btn" title="Copy a link to this proof">
@@ -44,7 +44,7 @@
   <!-- ── Help Panel ─────────────────────────────────────────────────────── -->
   <div id="help-panel" class="help-panel" hidden>
     <div class="help-inner">
-      <h2>Natural Deduction — Propositional Logic</h2>
+      <h2>Natural Deduction — Propositional &amp; Quantificational Logic</h2>
       <div class="help-cols">
 
         <div class="help-col">
@@ -60,6 +60,10 @@ q        →E  1, 2</pre>
 p → q   →I  2–3</pre>
           <h3>Special symbol</h3>
           <p><code>⊥</code> (falsum) — type as <code>_|_</code>, <code>bot</code>, or <code>⊥</code></p>
+          <h3>Quantificational vocabulary</h3>
+          <p>Predicates: <code>P Q R S T</code> followed by terms, e.g. <code>Pa</code>, <code>Rxy</code></p>
+          <p>Constants: <code>a b c d e</code> &nbsp; Variables: <code>x y z</code></p>
+          <p><code>∀</code> / <code>∃</code> followed by a variable, then a formula, e.g. <code>∀xPx</code>, <code>∃y(Py∧Qy)</code></p>
         </div>
 
         <div class="help-col">
@@ -80,6 +84,11 @@ p → q   →I  2–3</pre>
               <tr><td><code>¬I</code></td><td>Neg. Intro</td><td>m–n</td><td>¬φ  (subproof m–n)</td></tr>
               <tr><td><code>EFSQ</code></td><td>Ex Falso</td><td>n</td><td>any φ</td></tr>
               <tr><td><code>DN</code></td><td>Double Neg.</td><td>n</td><td>φ or ¬¬φ</td></tr>
+              <tr><td colspan="4" style="padding-top:.6em;font-weight:600;font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted)">Quantifier rules</td></tr>
+              <tr><td><code>∀E</code></td><td>Universal Elim</td><td>n</td><td>φ(a/x)  from ∀xφ</td></tr>
+              <tr><td><code>∀I</code></td><td>Universal Intro</td><td>n</td><td>∀xφ  from φ(a/x), a fresh</td></tr>
+              <tr><td><code>∃I</code></td><td>Existential Intro</td><td>n</td><td>∃xφ  from φ(a/x)</td></tr>
+              <tr><td><code>∃E</code></td><td>Existential Elim</td><td>m, n</td><td>ψ  from ∃xφ and φ(a/x)→ψ, a fresh</td></tr>
             </tbody>
           </table>
           <h3>ASCII shortcuts</h3>
@@ -87,6 +96,8 @@ p → q   →I  2–3</pre>
           <p><code>\/</code> or <code>|</code> for ∨</p>
           <p><code>-&gt;</code> for →</p>
           <p><code>~</code> for ¬</p>
+          <p><code>\forall</code> or <code>\all</code> for ∀</p>
+          <p><code>\exists</code> or <code>\ex</code> for ∃</p>
           <p class="help-note">Every binary connective needs its own parentheses: write <code>(p ∧ q) → r</code>, not <code>p ∧ q → r</code>. (You may omit the outermost pair.)</p>
           <p class="help-note">Cite line numbers separated by commas (e.g. <code>∧I 1, 2</code>). Subproof rules (<code>→I</code>, <code>¬I</code>) use a dash for the range (e.g. <code>→I 2–3</code>) — not commas or spaces.</p>
         </div>
@@ -124,6 +135,8 @@ p → q   →I  2–3</pre>
           <button class="sym-btn" onclick="insertSym('∧')" title="Conjunction">∧</button>
           <button class="sym-btn" onclick="insertSym('∨')" title="Disjunction">∨</button>
           <button class="sym-btn" onclick="insertSym('→')" title="Conditional">→</button>
+          <button class="sym-btn" onclick="insertSym('∀')" title="Universal quantifier">∀</button>
+          <button class="sym-btn" onclick="insertSym('∃')" title="Existential quantifier">∃</button>
         </div>
         <div class="sequent-row">
           <div class="sequent-field">
@@ -154,6 +167,8 @@ p → q   →I  2–3</pre>
           <button class="sym-btn" onclick="insertSym('∧')" title="Conjunction">∧</button>
           <button class="sym-btn" onclick="insertSym('∨')" title="Disjunction">∨</button>
           <button class="sym-btn" onclick="insertSym('→')" title="Conditional">→</button>
+          <button class="sym-btn" onclick="insertSym('∀')" title="Universal quantifier">∀</button>
+          <button class="sym-btn" onclick="insertSym('∃')" title="Existential quantifier">∃</button>
           <button class="sym-btn" onclick="insertSym('⊥')" title="Falsum">⊥</button>
           <button class="sym-btn" onclick="insertSym('∧I')" title="Conjunction Introduction">∧I</button>
           <button class="sym-btn" onclick="insertSym('∧E')" title="Conjunction Elimination">∧E</button>
@@ -165,6 +180,10 @@ p → q   →I  2–3</pre>
           <button class="sym-btn" onclick="insertSym('¬E')" title="Negation Elimination">¬E</button>
           <button class="sym-btn" onclick="insertSym('DN')"  title="Double Negation">DN</button>
           <button class="sym-btn" onclick="insertSym('EFSQ')" title="Ex Falso">EFSQ</button>
+          <button class="sym-btn" onclick="insertSym('∀E')" title="Universal Elimination">∀E</button>
+          <button class="sym-btn" onclick="insertSym('∀I')" title="Universal Introduction">∀I</button>
+          <button class="sym-btn" onclick="insertSym('∃I')" title="Existential Introduction">∃I</button>
+          <button class="sym-btn" onclick="insertSym('∃E')" title="Existential Elimination">∃E</button>
         </div>
 
         <textarea
@@ -202,8 +221,8 @@ q        →E  1, 2"
 
   </main>
 
-  <script src="parser.js?v=18"></script>
-  <script src="proof-engine.js?v=18"></script>
-  <script src="app.js?v=18"></script>
+  <script src="parser.js?v=19"></script>
+  <script src="proof-engine.js?v=19"></script>
+  <script src="app.js?v=19"></script>
 </body>
 </html>
