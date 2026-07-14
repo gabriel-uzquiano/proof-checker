@@ -245,7 +245,9 @@ function prettyPrint(node, topLevel = true) {
 
 function prettyAtom(node) {
   if (node.type === 'letter' || node.type === 'neg') return prettyPrint(node, false);
-  return '(' + prettyPrint(node, false) + ')';
+  // Binary connective under a negation: needs exactly one pair of parens.
+  // prettyPrint with topLevel=true already omits outer parens, so wrap once.
+  return '(' + prettyPrint(node, true) + ')';
 }
 
 function wrap(s, topLevel) {
