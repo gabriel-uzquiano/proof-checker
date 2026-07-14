@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Proof Checker — Logic</title>
-  <link rel="stylesheet" href="style.css?v=21" />
+  <link rel="stylesheet" href="style.css?v=22" />
 </head>
 <body>
 
@@ -92,14 +92,19 @@ p → q   →I  2–3</pre>
             </tbody>
           </table>
           <h3>ASCII shortcuts</h3>
-          <p><code>/\</code> or <code>&amp;</code> for ∧</p>
-          <p><code>\/</code> or <code>|</code> for ∨</p>
-          <p><code>-&gt;</code> for →</p>
-          <p><code>~</code> for ¬</p>
-          <p><code>\forall</code> or <code>\all</code> for ∀</p>
-          <p><code>\exists</code> or <code>\ex</code> for ∃</p>
-          <p class="help-note">Every binary connective needs its own parentheses: write <code>(p ∧ q) → r</code>, not <code>p ∧ q → r</code>. (You may omit the outermost pair.)</p>
-          <p class="help-note">Cite line numbers separated by commas (e.g. <code>∧I 1, 2</code>). Subproof rules (<code>→I</code>, <code>¬I</code>) use a dash for the range (e.g. <code>→I 2–3</code>) — not commas or spaces.</p>
+          <table class="rule-table" style="margin-top:.3em">
+            <thead><tr><th>Type</th><th>Symbol</th></tr></thead>
+            <tbody>
+              <tr><td><code>/\</code> or <code>&amp;</code></td><td>∧</td></tr>
+              <tr><td><code>\/</code> or <code>|</code></td><td>∨</td></tr>
+              <tr><td><code>-&gt;</code></td><td>→</td></tr>
+              <tr><td><code>~</code></td><td>¬</td></tr>
+              <tr><td><code>Ax</code> / <code>Ay</code> / <code>Az</code></td><td>∀x / ∀y / ∀z</td></tr>
+              <tr><td><code>Ex</code> / <code>Ey</code> / <code>Ez</code></td><td>∃x / ∃y / ∃z</td></tr>
+              <tr><td><code>\forall</code> or <code>\all</code></td><td>∀</td></tr>
+              <tr><td><code>\exists</code> or <code>\ex</code></td><td>∃</td></tr>
+            </tbody>
+          </table>
         </div>
 
       </div>
@@ -224,8 +229,8 @@ q        →E  1, 2"
 
   </main>
 
-  <script src="parser.js?v=21"></script>
-  <script src="proof-engine.js?v=21"></script>
-  <script src="app.js?v=21"></script>
+  <script src="parser.js?v=22"></script>
+  <script src="proof-engine.js?v=22"></script>
+  <script src="app.js?v=22"></script>
 </body>
 </html>

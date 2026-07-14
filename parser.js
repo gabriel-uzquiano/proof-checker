@@ -62,7 +62,10 @@ function normalise(s) {
     .replace(/\\?forall\b/gi, '∀')
     .replace(/\\?exists\b/gi, '∃')
     .replace(/\\?all\b/gi,    '∀')
-    .replace(/\\?ex\b/gi,     '∃');
+    .replace(/\\?ex\b/gi,     '∃')
+    // Uppercase A/E before a variable (x,y,z): AxPx → ∀xPx, ExPx → ∃xPx
+    .replace(/\bA(?=[xyz])/g, '∀')
+    .replace(/\bE(?=[xyz])/g, '∃');
 }
 
 // ── Token types ───────────────────────────────────────────────────────────────
