@@ -30,8 +30,14 @@ function formulaDisplay(ast) {
 
 // ── Symbol insertion ──────────────────────────────────────────────────────────
 // The Proof-card toolbar always inserts into the proof textarea.
+// Track the last focused input so symbol buttons work in both sequent and proof
+let lastFocusedInput = proofTextarea;
+[premisesInput, conclusionInput, proofTextarea].forEach(el => {
+  el.addEventListener('focus', () => { lastFocusedInput = el; });
+});
+
 function insertSym(sym) {
-  insertInto(proofTextarea, sym);
+  insertInto(lastFocusedInput, sym);
 }
 
 function insertInto(el, sym) {
@@ -564,16 +570,18 @@ loadFromHash();
 run();
 
 // ── Card-mode: ?card=sequent|proof|verify ─────────────────────────────────────
-// When loaded inside an iframe with ?card=<name>, the app enters card mode:
-// the header, help panel, examples bar, and all other cards are hidden.
+// When the page is loaded inside an iframe with ?card=<name>, the app enters
+// "card mode": the header, help panel, examples bar, and all cards except the
+// requested one are hidden, and compact padding is applied so the single card
+// fills the iframe without wasted space.
 //
 // Supported values:
-//   ?card=sequent  — Sequent card only (premises + conclusion inputs)
-//   ?card=proof    — Proof card only (textarea + symbol bar)
-//   ?card=verify   — Verification card only (Fitch display)
+//   ?card=sequent  — shows only the Sequent (premises + conclusion) card
+//   ?card=proof    — shows only the Proof (textarea + symbol bar) card
+//   ?card=verify   — shows only the Verification (Fitch display) card
 //
-// Comma-separated for multiple: ?card=proof,verify
-// Hash state (#p=...&c=...&pr=...) still works normally.
+// Multiple cards: ?card=sequent,proof  (comma-separated, order ignored)
+// All cards behave normally — live verification still runs across all three.
 
 (function applyCardMode() {
   const params = new URLSearchParams(location.search);
@@ -583,12 +591,14 @@ run();
     params.get('card').split(',').map(s => s.trim().toLowerCase())
   );
 
+  // Map card names to their .tree-row wrappers (the <div> that wraps each <section>)
   const cardRows = {
     sequent: document.querySelectorAll('.tree-row')[0],
     proof:   document.querySelectorAll('.tree-row')[1],
     verify:  document.querySelectorAll('.tree-row')[2],
   };
 
+  // Hide header, examples bar, help panel, completion banner
   const header    = document.querySelector('.app-header');
   const examples  = document.querySelector('.examples-bar');
   const helpPanel = document.getElementById('help-panel');
@@ -599,15 +609,18 @@ run();
   if (helpPanel) helpPanel.hidden = true;
   if (banner)    banner.hidden    = true;
 
+  // Show only the requested card rows
   Object.entries(cardRows).forEach(([name, el]) => {
     if (!el) return;
     el.hidden = !requested.has(name);
   });
 
+  // Apply compact body style so the card fills the iframe
   document.body.classList.add('card-mode');
 
+  // If sequent-only: make sequent inputs read-only (display purposes)
   if (requested.has('sequent') && requested.size === 1) {
-    if (typeof premisesInput   !== 'undefined') premisesInput.readOnly   = true;
-    if (typeof conclusionInput !== 'undefined') conclusionInput.readOnly = true;
+    if (premisesInput)   premisesInput.readOnly   = true;
+    if (conclusionInput) conclusionInput.readOnly  = true;
   }
 })();
