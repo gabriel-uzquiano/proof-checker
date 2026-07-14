@@ -1263,3 +1263,10 @@ body.card-mode .card {
   box-shadow: none;
   border: 1px solid var(--border);
 }
+
+/* ── Sequent card symbol bar (connectives only, compact) ─────────────────────── */
+.symbol-bar--sequent {
+  padding: 0.25rem 0.75rem 0rem;
+  gap: 0.25rem;
+  border-bottom: none;
+}

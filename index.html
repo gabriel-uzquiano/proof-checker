@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Proof Checker — Propositional Logic</title>
-  <link rel="stylesheet" href="style.css?v=15" />
+  <link rel="stylesheet" href="style.css?v=16" />
 </head>
 <body>
 
@@ -119,6 +119,13 @@ p → q   →I  2–3</pre>
           <h2 class="section-title">Sequent</h2>
           <div id="sequent-display" class="sequent-display"></div>
         </div>
+        <div class="symbol-bar symbol-bar--sequent">
+          <button class="sym-btn" onclick="insertSym('¬')" title="Negation">¬</button>
+          <button class="sym-btn" onclick="insertSym('∧')" title="Conjunction">∧</button>
+          <button class="sym-btn" onclick="insertSym('∨')" title="Disjunction">∨</button>
+          <button class="sym-btn" onclick="insertSym('→')" title="Conditional">→</button>
+          <button class="sym-btn" onclick="insertSym('↔')" title="Biconditional">↔</button>
+        </div>
         <div class="sequent-row">
           <div class="sequent-field">
             <label class="sequent-label" for="premises-input">Premises</label>
@@ -196,8 +203,8 @@ q        →E  1, 2"
 
   </main>
 
-  <script src="parser.js?v=15"></script>
-  <script src="proof-engine.js?v=15"></script>
-  <script src="app.js?v=15"></script>
+  <script src="parser.js?v=16"></script>
+  <script src="proof-engine.js?v=16"></script>
+  <script src="app.js?v=16"></script>
 </body>
 </html>
