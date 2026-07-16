@@ -148,6 +148,10 @@ function run() {
   updateSequentDisplay();
   updateParseStatus();
 
+  // Show/hide New Problem button
+  const npBtn = document.getElementById('new-problem-btn');
+  if (npBtn) npBtn.hidden = !premisesInput.value.trim() && !conclusionInput.value.trim() && !proofTextarea.value.trim();
+
   const proofText = proofTextarea.value;
   const premStrs  = premisesInput.value.split(',').map(s => s.trim()).filter(Boolean);
   const concStr   = conclusionInput.value.trim();
@@ -650,6 +654,17 @@ document.querySelectorAll('.sym-btn').forEach((b) => {
 buildExampleButtons();
 loadFromHash();
 run();
+
+// ── New Problem ─────────────────────────────────────────────────────
+function newProblemProof() {
+  premisesInput.value   = '';
+  conclusionInput.value = '';
+  proofTextarea.value   = '';
+  history.replaceState(null, '', window.location.pathname);
+  run(); // clears output, hides banner, hides New Problem button
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  setTimeout(() => premisesInput.focus(), 300);
+}
 
 // ── Card-mode: ?card=sequent|proof|verify ─────────────────────────────────────
 // When the page is loaded inside an iframe with ?card=<name>, the app enters
