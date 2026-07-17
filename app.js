@@ -601,9 +601,14 @@ function applyPropAscii(val) {
   for (const [pat, rep] of PROP_ASCII) s = s.split(pat).join(rep);
   return s;
 }
+function applyQuantAscii(s) {
+  s = s.replace(/A(?=[xyz\d])/g, '\u2200');
+  s = s.replace(/E(?=[xyz\d])/g, '\u2203');
+  return s;
+}
 function liveReplace(el) {
   const orig = el.value, pos = el.selectionStart;
-  const next = applyPropAscii(orig);
+  const next = applyQuantAscii(applyPropAscii(orig));
   if (next !== orig) {
     el.value = next;
     el.setSelectionRange(pos + (next.length - orig.length), pos + (next.length - orig.length));
