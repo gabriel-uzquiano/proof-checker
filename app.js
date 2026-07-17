@@ -588,17 +588,17 @@ function buildExampleButtons() {
 // ── Event listeners ───────────────────────────────────────────────────────────
 // ── Live ASCII replacement (prop logic) ───────────────────────────────────────
 const PROP_ASCII = [
-  [/<->/g,  '↔'],
-  [/->/g,   '→'],
-  [/\/\\/g,'∧'],
-  [/\\\/g,  '∨'],
-  [/~/g,   '¬'],
-  [/&/g,   '∧'],
-  [/\|/g,  '∨'],
+  ['<->','\u2194'],
+  ['->','\u2192'],
+  ['/\\','\u2227'],
+  ['\\/','\u2228'],
+  ['~','\u00ac'],
+  ['&','\u2227'],
+  ['|','\u2228'],
 ];
 function applyPropAscii(val) {
   let s = val;
-  for (const [pat, rep] of PROP_ASCII) s = s.replace(pat, rep);
+  for (const [pat, rep] of PROP_ASCII) s = s.split(pat).join(rep);
   return s;
 }
 function liveReplace(el) {
