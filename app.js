@@ -586,6 +586,33 @@ function buildExampleButtons() {
 }
 
 // ── Event listeners ───────────────────────────────────────────────────────────
+// ── Live ASCII replacement (prop logic) ───────────────────────────────────────
+const PROP_ASCII = [
+  [/<->/g,  '↔'],
+  [/->/g,   '→'],
+  [/\/\\/g,'∧'],
+  [/\\\/g,  '∨'],
+  [/~/g,   '¬'],
+  [/&/g,   '∧'],
+  [/\|/g,  '∨'],
+];
+function applyPropAscii(val) {
+  let s = val;
+  for (const [pat, rep] of PROP_ASCII) s = s.replace(pat, rep);
+  return s;
+}
+function liveReplace(el) {
+  const orig = el.value, pos = el.selectionStart;
+  const next = applyPropAscii(orig);
+  if (next !== orig) {
+    el.value = next;
+    el.setSelectionRange(pos + (next.length - orig.length), pos + (next.length - orig.length));
+  }
+}
+[proofTextarea, premisesInput, conclusionInput].forEach(el => {
+  el.addEventListener('keyup', () => liveReplace(el));
+});
+
 proofTextarea.addEventListener('input', run);
 premisesInput.addEventListener('input', run);
 conclusionInput.addEventListener('input', run);
