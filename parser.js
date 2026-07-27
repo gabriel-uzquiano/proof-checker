@@ -82,6 +82,7 @@ const T = {
   EXISTS: 'EXISTS',       // ∃
   LPAREN: 'LPAREN',
   RPAREN: 'RPAREN',
+  EQ:     'EQ',       // identity  =
   EOF:    'EOF',
 };
 
@@ -107,6 +108,7 @@ function tokenise(raw) {
     if (ch === '↔') { tokens.push({ type: T.BICOND }); i++; continue; }
     if (ch === '(') { tokens.push({ type: T.LPAREN }); i++; continue; }
     if (ch === ')') { tokens.push({ type: T.RPAREN }); i++; continue; }
+    if (ch === '=') { tokens.push({ type: T.EQ });     i++; continue; }
     if (ch === '∀') { tokens.push({ type: T.FORALL }); i++; continue; }
     if (ch === '∃') { tokens.push({ type: T.EXISTS }); i++; continue; }
 
@@ -249,6 +251,22 @@ class Parser {
       return { type: 'atom', pred, args };
     }
 
+    // Identity atomic formula: t = s  (e.g. a=b, x=a)
+    if (this.at(T.TERM)) {
+      const left = this.consume().name;
+      if (!this.at(T.EQ)) {
+        throw new ParseError(
+          `'${left}' must be followed by '=' or used as an argument to a predicate.`
+        );
+      }
+      this.consume(); // eat =
+      if (!this.at(T.TERM)) {
+        throw new ParseError(`Expected a term after '='.`);
+      }
+      const right = this.consume().name;
+      return { type: 'eq', left, right };
+    }
+
     // PL sentence letter
     if (this.at(T.LETTER)) {
       const tok = this.consume();
@@ -320,6 +338,7 @@ function prettyPrint(node, topLevel = true) {
   switch (node.type) {
     case 'letter': return node.name + (node.sub || '');
     case 'atom':   return node.pred + node.args.join('');
+  case 'eq':     return node.left + '=' + node.right;
     case 'bot':    return '⊥';
     case 'neg':    return '¬' + prettyAtom(node.arg);
     case 'and':    return wrap(`${prettyPrint(node.left, false)} ∧ ${prettyPrint(node.right, false)}`, topLevel);

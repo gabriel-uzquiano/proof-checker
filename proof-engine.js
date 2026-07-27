@@ -208,6 +208,9 @@ function normaliseRule(raw) {
     '∀I': '∀I', 'AI2': '∀I', 'UI2': '∀I', 'FORALLI': '∀I', 'UG': '∀I',
     '∃I': '∃I', 'EI': '∃I', 'EXISTSI': '∃I', 'EG': '∃I',
     '∃E': '∃E', 'EE': '∃E', 'EXISTSE': '∃E', 'ES': '∃E',
+    // Identity rules
+    '=I': '=I', 'I=': '=I', 'REFL': '=I', 'IDEQ': '=I',
+    '=E': '=E', 'E=': '=E', 'SUBE': '=E', 'IDEQE': '=E',
   };
 
   return MAP[key] || null;
