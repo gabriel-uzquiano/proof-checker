@@ -721,10 +721,11 @@ function newProblemProof() {
   );
 
   // Map card names to their .tree-row wrappers (the <div> that wraps each <section>)
+  // .tree-row[0] is the examples bar row — skip it; cards start at index 1
   const cardRows = {
-    sequent: document.querySelectorAll('.tree-row')[0],
-    proof:   document.querySelectorAll('.tree-row')[1],
-    verify:  document.querySelectorAll('.tree-row')[2],
+    sequent: document.querySelectorAll('.tree-row')[1],
+    proof:   document.querySelectorAll('.tree-row')[2],
+    verify:  document.querySelectorAll('.tree-row')[3],
   };
 
   // Hide header, examples bar, help panel, completion banner
