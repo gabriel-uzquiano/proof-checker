@@ -339,6 +339,15 @@ Pa→Pa     →I  1–2
 `∃xPx      P
 Pa→∃yQy   P
 ∃yQy      ∃E  1, 2` },
+  // ── Identity rule illustrations ──────────────────────────────────
+  { label: '=I', premises: '', conclusion: 'a=a',
+    proof:
+`a=a   =I` },
+  { label: '=E', premises: 'a=b, Pa', conclusion: 'Pb',
+    proof:
+`a=b   P
+Pa    P
+Pb    =E  1, 2` },
 ];
 
 const PROOF_EXAMPLES = [

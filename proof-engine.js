@@ -28,6 +28,19 @@
  *             From ∃xφ (line m) and φ(a/x)→ψ (line n), derive ψ,
  *             provided a occurs neither in ψ nor in ∃xφ nor in any undischarged assumption.
  *
+ * Identity rules (PHIL 220 Chapter 11):
+ *   =I      — Identity Intro         cite: []
+ *             At any point, derive τ = τ for any term τ.
+ *   =E      — Identity Elim          cite: [m,n]
+ *             From an identity τ₁ = τ₂ (either line m or n) and any formula φ,
+ *             derive a formula φ' obtained from φ by substituting τ₂ for one or
+ *             more occurrences of τ₁ (or symmetrically, τ₁ for τ₂).
+ *             At least one occurrence must be substituted, but not all
+ *             occurrences need be — this is the "selective" reading, matching
+ *             standard textbook practice and the Chapter 11 examples.
+ *             If the two terms are the same (τ₁ = τ₁), any prior line may be
+ *             re-derived unchanged (trivial case).
+ *
  * ⊥ aliases: _|_  bot  bottom  false  ⊥  \bot
  */
 
@@ -45,6 +58,8 @@ function astEqual(a, b) {
       return astEqual(a.left, b.left) && astEqual(a.right, b.right);
     case 'forall': case 'exists':
       return a.var === b.var && astEqual(a.arg, b.arg);
+    case 'eq':
+      return a.left === b.left && a.right === b.right;
     default: return false;
   }
 }
@@ -85,6 +100,85 @@ function parseFormula(raw) {
   catch(e) { return parse('(' + s + ')'); }
 }
 
+// ── Term-substitution equivalence for =E ─────────────────────────────────────
+
+/**
+ * Enumerate every AST that can be obtained from `node` by replacing zero or
+ * more occurrences of term `from` with term `to`. Returns an array of ASTs
+ * (structurally distinct). Used by =E to validate that `after` is one of the
+ * legal results of substituting `to` for `from` in `before`.
+ *
+ * Terms are represented as plain strings in atom.args, eq.left/right, and as
+ * `.var` on quantifier nodes (but variables bound by a quantifier are NOT
+ * substitution targets — we only replace when the string appears in a term
+ * position: atom argument or side of an eq node). Quantifier variables and
+ * predicate/letter names are left untouched.
+ */
+function substituteTermVariants(node, from, to) {
+  if (!node) return [node];
+
+  const cross = (variantsL, variantsR, build) => {
+    const out = [];
+    for (const l of variantsL) for (const r of variantsR) out.push(build(l, r));
+    return out;
+  };
+
+  switch (node.type) {
+    case 'letter': case 'bot':
+      return [node];
+
+    case 'atom': {
+      // For each argument slot, generate {keep, replace-if-matches} choices.
+      let variants = [[]];
+      for (const a of node.args) {
+        const next = [];
+        for (const prefix of variants) {
+          next.push([...prefix, a]);                  // keep
+          if (a === from) next.push([...prefix, to]); // replace
+        }
+        variants = next;
+      }
+      return variants.map(args => ({ type: 'atom', pred: node.pred, args }));
+    }
+
+    case 'eq': {
+      const lefts  = node.left  === from ? [node.left,  to] : [node.left];
+      const rights = node.right === from ? [node.right, to] : [node.right];
+      return cross(lefts, rights, (l, r) => ({ type: 'eq', left: l, right: r }));
+    }
+
+    case 'neg': {
+      const inner = substituteTermVariants(node.arg, from, to);
+      return inner.map(arg => ({ type: 'neg', arg }));
+    }
+
+    case 'and': case 'or': case 'imp': {
+      const ls = substituteTermVariants(node.left,  from, to);
+      const rs = substituteTermVariants(node.right, from, to);
+      return cross(ls, rs, (l, r) => ({ type: node.type, left: l, right: r }));
+    }
+
+    case 'forall': case 'exists': {
+      // If the quantifier binds `from` as a variable, don't substitute inside.
+      if (node.var === from) return [node];
+      const inner = substituteTermVariants(node.arg, from, to);
+      return inner.map(arg => ({ type: node.type, var: node.var, arg }));
+    }
+
+    default:
+      return [node];
+  }
+}
+
+/**
+ * Return true iff `after` can be obtained from `before` by substituting `to`
+ * for at least zero (i.e. any number, possibly none) occurrences of `from`.
+ * Order-insensitive; used by =E.
+ */
+function isEqSubstitutionResult(before, after, from, to) {
+  return substituteTermVariants(before, from, to).some(v => astEqual(v, after));
+}
+
 // ── Substitution helpers ──────────────────────────────────────────────────────
 
 /**
@@ -106,6 +200,12 @@ function substituteVar(node, vr, con) {
       // If the quantifier binds vr, stop substituting (vr is bound inside)
       if (node.var === vr) return node;
       return { ...node, arg: substituteVar(node.arg, vr, con) };
+    case 'eq':
+      return {
+        type: 'eq',
+        left:  node.left  === vr ? con : node.left,
+        right: node.right === vr ? con : node.right,
+      };
     default: return node;
   }
 }
@@ -129,6 +229,12 @@ function substituteCon(node, con, vr) {
       // Don't substitute inside a quantifier that binds the target variable
       if (node.var === vr) return node;
       return { ...node, arg: substituteCon(node.arg, con, vr) };
+    case 'eq':
+      return {
+        type: 'eq',
+        left:  node.left  === con ? vr : node.left,
+        right: node.right === con ? vr : node.right,
+      };
     default: return node;
   }
 }
@@ -141,6 +247,10 @@ function constsInNode(node) {
   function walk(n) {
     if (!n) return;
     if (n.type === 'atom') { n.args.forEach(a => { if (/^[abcde]$/.test(a)) s.add(a); }); return; }
+    if (n.type === 'eq')   {
+      [n.left, n.right].forEach(a => { if (/^[abcde]$/.test(a)) s.add(a); });
+      return;
+    }
     if (n.type === 'neg' || n.type === 'forall' || n.type === 'exists') { walk(n.arg); return; }
     if (n.type === 'letter' || n.type === 'bot') return;
     walk(n.left); walk(n.right);
@@ -170,6 +280,8 @@ function varFree(node, vr) {
     case 'forall': case 'exists':
       if (node.var === vr) return false;   // bound here
       return varFree(node.arg, vr);
+    case 'eq':
+      return node.left === vr || node.right === vr;
     default: return false;
   }
 }
@@ -719,6 +831,60 @@ function validateProof(parsedLines, premises) {
           // Maybe the cited formula equals the body with x free (no constant involved)
           // That's not standard; give an informative error.
           errMsg = `Line ${citations[0]} (${formulaStr(src.formula)}) is not an instance of ${formulaStr(formula)} — no constant in that line substitutes for ${vr} to give ${formulaStr(phi)}`;
+          break;
+        }
+        ok = true;
+        break;
+      }
+
+      case '=I': {
+        // Identity Introduction: τ = τ, no citations.
+        const e = citCheck(0);
+        if (e) { errMsg = e; break; }
+        if (formula.type !== 'eq') {
+          errMsg = `=I derives an identity τ = τ, but the result is ${formulaStr(formula)}`;
+          break;
+        }
+        if (formula.left !== formula.right) {
+          errMsg = `=I requires the two sides of the identity to be the same term, but got ${formula.left} = ${formula.right}`;
+          break;
+        }
+        ok = true;
+        break;
+      }
+
+      case '=E': {
+        // Identity Elimination: from τ₁=τ₂ and φ, derive any φ' obtained
+        // from φ by substituting τ₂ for one or more (or symmetrically τ₁ for
+        // τ₂) occurrences. Cite the identity line and the source-formula line.
+        const e = citCheck(2);
+        if (e) { errMsg = e; break; }
+        const lineA = getLine(citations[0]);
+        const lineB = getLine(citations[1]);
+        if (!lineA || !lineB) { errMsg = 'Citation not found'; break; }
+
+        // Identify which cited line is the identity.
+        let idLine, srcLine;
+        if (lineA.formula.type === 'eq') { idLine = lineA; srcLine = lineB; }
+        else if (lineB.formula.type === 'eq') { idLine = lineB; srcLine = lineA; }
+        else {
+          errMsg = `=E requires one cited line to be an identity τ₁ = τ₂. ` +
+                   `Line ${citations[0]} is ${formulaStr(lineA.formula)}, ` +
+                   `line ${citations[1]} is ${formulaStr(lineB.formula)}.`;
+          break;
+        }
+
+        const t1 = idLine.formula.left;
+        const t2 = idLine.formula.right;
+
+        // Try both directions of substitution.
+        const okForward  = isEqSubstitutionResult(srcLine.formula, formula, t1, t2);
+        const okBackward = isEqSubstitutionResult(srcLine.formula, formula, t2, t1);
+
+        if (!okForward && !okBackward) {
+          errMsg = `=E: ${formulaStr(formula)} is not obtainable from ` +
+                   `${formulaStr(srcLine.formula)} by substituting ${t1}↔${t2} ` +
+                   `using ${formulaStr(idLine.formula)}`;
           break;
         }
         ok = true;
