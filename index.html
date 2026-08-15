@@ -89,6 +89,9 @@ p → q   →I  2–3</pre>
               <tr><td><code>∀I</code></td><td>Universal Intro</td><td>n</td><td>∀xφ  from φ(a/x), a fresh</td></tr>
               <tr><td><code>∃I</code></td><td>Existential Intro</td><td>n</td><td>∃xφ  from φ(a/x)</td></tr>
               <tr><td><code>∃E</code></td><td>Existential Elim</td><td>m, n</td><td>ψ  from ∃xφ and φ(a/x)→ψ, a fresh</td></tr>
+              <tr><td colspan="4" style="padding-top:.6em;font-weight:600;font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted)">Identity rules</td></tr>
+              <tr><td><code>=I</code></td><td>Identity Intro</td><td>—</td><td>τ = τ  (any term τ)</td></tr>
+              <tr><td><code>=E</code></td><td>Identity Elim</td><td>m, n</td><td>φ'  from τ₁ = τ₂ and φ, substituting τ₁↔τ₂</td></tr>
             </tbody>
           </table>
           <h3>ASCII shortcuts</h3>
@@ -193,6 +196,8 @@ p → q   →I  2–3</pre>
           <button class="sym-btn" onclick="insertSym('∀I')" title="Universal Introduction">∀I</button>
           <button class="sym-btn" onclick="insertSym('∃I')" title="Existential Introduction">∃I</button>
           <button class="sym-btn" onclick="insertSym('∃E')" title="Existential Elimination">∃E</button>
+          <button class="sym-btn" onclick="insertSym('=I')" title="Identity Introduction">=I</button>
+          <button class="sym-btn" onclick="insertSym('=E')" title="Identity Elimination">=E</button>
         </div>
 
         <textarea
