@@ -50,14 +50,14 @@
         <div class="help-col">
           <h3>Proof format</h3>
           <p>Each line: <code>formula  rule  citations</code></p>
-          <p>Subproofs are <strong>indented</strong> (use spaces). Open a subproof by starting an indented assumption (<code>A</code>). Close it by returning to the outer level and citing the subproof as a range <code>m–n</code> (assumption through last line), e.g. <code>→I 2–3</code>. Separate multiple line numbers with commas, e.g. <code>∧I 1, 2</code>.</p>
-          <pre class="help-pre">p → q   P
-p        P
-q        →E  1, 2</pre>
-          <pre class="help-pre">p → q   P
+          <p>Premises and assumptions share one label, <code>A</code>: at the top level <code>A</code> means premise; indented inside a subproof it opens that subproof. Close a subproof by returning to the outer level and citing it as a range <code>m–n</code> (assumption through last line), e.g. <code>I→ 2–3</code>. Separate multiple line numbers with commas, e.g. <code>I∧ 1, 2</code>.</p>
+          <pre class="help-pre">p → q   A
+p        A
+q        E→  1, 2</pre>
+          <pre class="help-pre">p → q   A
   p      A
-  q      →E  1, 2
-p → q   →I  2–3</pre>
+  q      E→  1, 2
+p → q   I→  2–3</pre>
           <h3>Special symbol</h3>
           <p><code>⊥</code> (falsum) — type as <code>_|_</code>, <code>bot</code>, or <code>⊥</code></p>
           <h3>Quantificational vocabulary</h3>
@@ -71,17 +71,16 @@ p → q   →I  2–3</pre>
           <table class="help-table">
             <thead><tr><th>Rule</th><th>Name</th><th>Cite</th><th>Result</th></tr></thead>
             <tbody>
-              <tr><td><code>P</code></td><td>Premise</td><td>—</td><td>φ (a listed premise)</td></tr>
-              <tr><td><code>A</code></td><td>Assumption</td><td>—</td><td>φ (any; opens subproof)</td></tr>
+              <tr><td><code>A</code></td><td>Premise / Assumption</td><td>—</td><td>φ (top level: listed premise; indented: any — opens subproof)</td></tr>
               <tr><td><code>R</code></td><td>Repetition</td><td>n</td><td>φ</td></tr>
-              <tr><td><code>∧I</code></td><td>Conj. Intro</td><td>m, n</td><td>φ∧ψ</td></tr>
-              <tr><td><code>∧E</code></td><td>Conj. Elim</td><td>n</td><td>φ  or  ψ</td></tr>
-              <tr><td><code>→E</code></td><td>Cond. Elim (MP)</td><td>m, n</td><td>ψ</td></tr>
-              <tr><td><code>→I</code></td><td>Cond. Intro</td><td>m–n</td><td>φ→ψ  (subproof m–n)</td></tr>
-              <tr><td><code>∨I</code></td><td>Disj. Intro</td><td>n</td><td>φ∨ψ</td></tr>
-              <tr><td><code>∨E</code></td><td>Disj. Elim</td><td>m, n, k</td><td>χ</td></tr>
-              <tr><td><code>¬E</code></td><td>Neg. Elim</td><td>m, n</td><td>⊥</td></tr>
-              <tr><td><code>¬I</code></td><td>Neg. Intro</td><td>m–n</td><td>¬φ  (subproof m–n)</td></tr>
+              <tr><td><code>I∧</code></td><td>Conj. Intro</td><td>m, n</td><td>φ∧ψ</td></tr>
+              <tr><td><code>E∧</code></td><td>Conj. Elim</td><td>n</td><td>φ  or  ψ</td></tr>
+              <tr><td><code>E→</code></td><td>Cond. Elim (MP)</td><td>m, n</td><td>ψ</td></tr>
+              <tr><td><code>I→</code></td><td>Cond. Intro</td><td>m–n</td><td>φ→ψ  (subproof m–n)</td></tr>
+              <tr><td><code>I∨</code></td><td>Disj. Intro</td><td>n</td><td>φ∨ψ</td></tr>
+              <tr><td><code>E∨</code></td><td>Disj. Elim</td><td>m, n, k</td><td>χ</td></tr>
+              <tr><td><code>E¬</code></td><td>Neg. Elim</td><td>m, n</td><td>⊥</td></tr>
+              <tr><td><code>I¬</code></td><td>Neg. Intro</td><td>m–n</td><td>¬φ  (subproof m–n)</td></tr>
               <tr><td><code>EFSQ</code></td><td>Ex Falso</td><td>n</td><td>any φ</td></tr>
               <tr><td><code>DN</code></td><td>Double Neg.</td><td>n</td><td>φ or ¬¬φ</td></tr>
               <tr><td colspan="4" style="padding-top:.6em;font-weight:600;font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted)">Quantifier rules</td></tr>
@@ -182,14 +181,14 @@ p → q   →I  2–3</pre>
         </div>
         <div class="symbol-bar symbol-bar--rules">
           <button class="sym-btn" onclick="insertSym('R')"   title="Repetition">R</button>
-          <button class="sym-btn" onclick="insertSym('∧I')" title="Conjunction Introduction">∧I</button>
-          <button class="sym-btn" onclick="insertSym('∧E')" title="Conjunction Elimination">∧E</button>
-          <button class="sym-btn" onclick="insertSym('→I')" title="Conditional Introduction">→I</button>
-          <button class="sym-btn" onclick="insertSym('→E')" title="Conditional Elimination">→E</button>
-          <button class="sym-btn" onclick="insertSym('∨I')" title="Disjunction Introduction">∨I</button>
-          <button class="sym-btn" onclick="insertSym('∨E')" title="Disjunction Elimination">∨E</button>
-          <button class="sym-btn" onclick="insertSym('¬I')" title="Negation Introduction">¬I</button>
-          <button class="sym-btn" onclick="insertSym('¬E')" title="Negation Elimination">¬E</button>
+          <button class="sym-btn" onclick="insertSym('I∧')" title="Conjunction Introduction">I∧</button>
+          <button class="sym-btn" onclick="insertSym('E∧')" title="Conjunction Elimination">E∧</button>
+          <button class="sym-btn" onclick="insertSym('I→')" title="Conditional Introduction">I→</button>
+          <button class="sym-btn" onclick="insertSym('E→')" title="Conditional Elimination">E→</button>
+          <button class="sym-btn" onclick="insertSym('I∨')" title="Disjunction Introduction">I∨</button>
+          <button class="sym-btn" onclick="insertSym('E∨')" title="Disjunction Elimination">E∨</button>
+          <button class="sym-btn" onclick="insertSym('I¬')" title="Negation Introduction">I¬</button>
+          <button class="sym-btn" onclick="insertSym('E¬')" title="Negation Elimination">E¬</button>
           <button class="sym-btn" onclick="insertSym('DN')"  title="Double Negation">DN</button>
           <button class="sym-btn" onclick="insertSym('EFSQ')" title="Ex Falso">EFSQ</button>
           <button class="sym-btn" onclick="insertSym('∀E')" title="Universal Elimination">∀E</button>
@@ -205,9 +204,9 @@ p → q   →I  2–3</pre>
           class="proof-textarea"
           placeholder="Enter your proof here. One step per line: formula  rule  line-citations
 Example:
-p → q   P
-p        P
-q        →E  1, 2"
+p → q   A
+p        A
+q        E→  1, 2"
           spellcheck="false"
           autocomplete="off"
           autocorrect="off"
@@ -225,7 +224,7 @@ q        →E  1, 2"
     <div class="tree-row">
       <section class="card">
         <div class="card-header">
-          <h2 class="section-title">Verification</h2>
+          <h2 class="section-title">Proof Check</h2>
         </div>
         <div id="output-panel" class="output-panel">
           <div class="output-empty">Enter a proof above to check it.</div>

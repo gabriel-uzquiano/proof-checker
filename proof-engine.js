@@ -2,17 +2,16 @@
  * Proof Engine for Propositional + Quantificational Logic Natural Deduction.
  *
  * Propositional rules (PHIL 220):
- *   P       — Premise
- *   A       — Assumption (opens subproof)
+ *   A       — Premise (top level) or Assumption (opens subproof, indented)
  *   R       — Repetition             cite: [n]
- *   ∧I      — Conjunction Intro      cite: [m,n]
- *   ∧E      — Conjunction Elim       cite: [n]
- *   →E      — Conditional Elim (MP)  cite: [m,n]
- *   →I      — Conditional Intro      cite: [m–n]  (subproof)
- *   ∨I      — Disjunction Intro      cite: [n]
- *   ∨E      — Disjunction Elim       cite: [m,n,k]
- *   ¬E      — Negation Elim          cite: [m,n]
- *   ¬I      — Negation Intro         cite: [m–n]  (subproof)
+ *   I∧      — Conjunction Intro      cite: [m,n]
+ *   E∧      — Conjunction Elim       cite: [n]
+ *   E→      — Conditional Elim (MP)  cite: [m,n]
+ *   I→      — Conditional Intro      cite: [m–n]  (subproof)
+ *   I∨      — Disjunction Intro      cite: [n]
+ *   E∨      — Disjunction Elim       cite: [m,n,k]
+ *   E¬      — Negation Elim          cite: [m,n]
+ *   I¬      — Negation Intro         cite: [m–n]  (subproof)
  *   EFSQ    — Ex Falso               cite: [n]
  *   DN      — Double Negation        cite: [n]
  *
@@ -303,18 +302,20 @@ function normaliseRule(raw) {
 
   const MAP = {
     'R': 'R', 'REP': 'R', 'REPETITION': 'R',
-    '∧I': '∧I', 'AI': '∧I', 'ANDI': '∧I', 'CONJ': '∧I', 'CONJI': '∧I',
-    '∧E': '∧E', 'AE': '∧E', 'ANDE': '∧E', 'CONJE': '∧E', 'SIMP': '∧E', 'S': '∧E',
-    '→I': '→I', 'CI': '→I', 'CONDI': '→I', 'CD': '→I',
-    '→E': '→E', 'CE': '→E', 'CONDE': '→E', 'MP': '→E',
-    '∨I': '∨I', 'ORI': '∨I', 'DISJI': '∨I', 'ADD': '∨I',
-    '∨E': '∨E', 'ORE': '∨E', 'DISJE': '∨E', 'MTP': '∨E',
-    '¬I': '¬I', 'NEGI': '¬I', 'ID': '¬I', 'NI': '¬I',
-    '¬E': '¬E', 'NEGE': '¬E', 'NE': '¬E',
+    'I∧': 'I∧', '∧I': 'I∧', 'AI': 'I∧', 'ANDI': 'I∧', 'CONJ': 'I∧', 'CONJI': 'I∧',
+    'E∧': 'E∧', '∧E': 'E∧', 'AE': 'E∧', 'ANDE': 'E∧', 'CONJE': 'E∧', 'SIMP': 'E∧', 'S': 'E∧',
+    'I→': 'I→', '→I': 'I→', 'CI': 'I→', 'CONDI': 'I→', 'CD': 'I→',
+    'E→': 'E→', '→E': 'E→', 'CE': 'E→', 'CONDE': 'E→', 'MP': 'E→',
+    'I∨': 'I∨', '∨I': 'I∨', 'ORI': 'I∨', 'DISJI': 'I∨', 'ADD': 'I∨',
+    'E∨': 'E∨', '∨E': 'E∨', 'ORE': 'E∨', 'DISJE': 'E∨', 'MTP': 'E∨',
+    'I¬': 'I¬', '¬I': 'I¬', 'NEGI': 'I¬', 'ID': 'I¬', 'NI': 'I¬',
+    'E¬': 'E¬', '¬E': 'E¬', 'NEGE': 'E¬', 'NE': 'E¬',
     'EFSQ': 'EFSQ', 'EFQ': 'EFSQ', 'EXFALSO': 'EFSQ', 'EF': 'EFSQ',
     'DN': 'DN', 'DNE': 'DN', 'DNI': 'DN', 'DOUBLENEG': 'DN',
-    'P': 'P', 'PR': 'P', 'PREM': 'P', 'PREMISE': 'P',
+    // Premises and assumptions share one label ('A'); at check time, depth 0
+    // means it must match a stated premise, depth > 0 means it opens a subproof.
     'A': 'A', 'AS': 'A', 'ASS': 'A', 'ASSUMPTION': 'A', 'ASSUME': 'A',
+    'P': 'A', 'PR': 'A', 'PREM': 'A', 'PREMISE': 'A',
     // Quantifier rules
     '∀E': '∀E', 'AE2': '∀E', 'UE': '∀E', 'FORALLE': '∀E', 'UI': '∀E',
     '∀I': '∀I', 'AI2': '∀I', 'UI2': '∀I', 'FORALLI': '∀I', 'UG': '∀I',
@@ -368,7 +369,7 @@ function parseProofLine(rawLine, lineNo) {
     } else if (INT_RE.test(part)) {
       citations.push(Number(part));
     } else {
-      citParseErr = 'Cite line numbers separated by commas (e.g. ∧I 1, 2); use a dash for a subproof (e.g. →I 2-6).';
+      citParseErr = 'Cite line numbers separated by commas (e.g. I∧ 1, 2); use a dash for a subproof (e.g. I→ 2-6).';
       break;
     }
   }
@@ -512,8 +513,8 @@ function validateProof(parsedLines, premises) {
     let ok = false;
     let errMsg = null;
 
-    // Subproof ranges only valid for →I and ¬I
-    if (ranges && ranges.length && rule !== '→I' && rule !== '¬I') {
+    // Subproof ranges only valid for I→ and I¬
+    if (ranges && ranges.length && rule !== 'I→' && rule !== 'I¬') {
       results.push({ ...line, ok: false, error: `${rule} does not take a subproof range (m–n). Cite separate line numbers instead.` });
       return;
     }
@@ -522,21 +523,18 @@ function validateProof(parsedLines, premises) {
 
     switch (rule) {
 
-      case 'P': {
-        const e = citCheck(0);
-        if (e) { errMsg = e; break; }
-        if (depth !== 0) { errMsg = 'Premises must be at the top level'; break; }
-        const match = premises.some(p => astEqual(p, formula));
-        if (!match) errMsg = formulaStr(formula) + ' is not a listed premise';
-        else ok = true;
-        break;
-      }
-
       case 'A': {
+        // Same label for both: at depth 0 it's a premise (must match the
+        // stated premises); indented inside a subproof, it's a free assumption.
         const e = citCheck(0);
         if (e) { errMsg = e; break; }
-        if (depth === 0) { errMsg = 'Assumptions must be inside a subproof (indent the line)'; break; }
-        ok = true;
+        if (depth === 0) {
+          const match = premises.some(p => astEqual(p, formula));
+          if (!match) errMsg = formulaStr(formula) + ' is not a listed premise';
+          else ok = true;
+        } else {
+          ok = true;
+        }
         break;
       }
 
@@ -551,7 +549,7 @@ function validateProof(parsedLines, premises) {
         break;
       }
 
-      case '∧I': {
+      case 'I∧': {
         const e = citCheck(2);
         if (e) { errMsg = e; break; }
         if (formula.type !== 'and') { errMsg = 'Result must be a conjunction (φ∧ψ)'; break; }
@@ -563,7 +561,7 @@ function validateProof(parsedLines, premises) {
         break;
       }
 
-      case '∧E': {
+      case 'E∧': {
         const e = citCheck(1);
         if (e) { errMsg = e; break; }
         const src = getLine(citations[0]);
@@ -574,7 +572,7 @@ function validateProof(parsedLines, premises) {
         break;
       }
 
-      case '→E': {
+      case 'E→': {
         const e = citCheck(2);
         if (e) { errMsg = e; break; }
         const a = getLine(citations[0]), b = getLine(citations[1]);
@@ -591,9 +589,9 @@ function validateProof(parsedLines, premises) {
         break;
       }
 
-      case '→I': {
-        if (citations.length !== 0) { errMsg = `Use a dash for subproofs: write "→I ${citations[0]}–${citations[1] || citations[0]+1}", not "→I ${citations.join(' ')}".`; break; }
-        if (!ranges || ranges.length !== 1) { errMsg = '→I requires a subproof range m–n (e.g. →I 2–3).'; break; }
+      case 'I→': {
+        if (citations.length !== 0) { errMsg = `Use a dash for subproofs: write "I→ ${citations[0]}–${citations[1] || citations[0]+1}", not "I→ ${citations.join(' ')}".`; break; }
+        if (!ranges || ranges.length !== 1) { errMsg = 'I→ requires a subproof range m–n (e.g. I→ 2–3).'; break; }
         const r = ranges[0];
         if (formula.type !== 'imp') { errMsg = 'Result must be a conditional (φ→ψ)'; break; }
         const assumeLine = getLine(r.m);
@@ -613,7 +611,7 @@ function validateProof(parsedLines, premises) {
         break;
       }
 
-      case '∨I': {
+      case 'I∨': {
         const e = citCheck(1);
         if (e) { errMsg = e; break; }
         if (formula.type !== 'or') { errMsg = 'Result must be a disjunction (φ∨ψ)'; break; }
@@ -624,7 +622,7 @@ function validateProof(parsedLines, premises) {
         break;
       }
 
-      case '∨E': {
+      case 'E∨': {
         const e = citCheck(3);
         if (e) { errMsg = e; break; }
         const [n1, n2, n3] = citations;
@@ -661,10 +659,10 @@ function validateProof(parsedLines, premises) {
         break;
       }
 
-      case '¬E': {
+      case 'E¬': {
         const e = citCheck(2);
         if (e) { errMsg = e; break; }
-        if (formula.type !== 'bot') { errMsg = 'Result of ¬E must be ⊥'; break; }
+        if (formula.type !== 'bot') { errMsg = 'Result of E¬ must be ⊥'; break; }
         const a = getLine(citations[0]), b = getLine(citations[1]);
         if (!a || !b) { errMsg = 'Citation not found'; break; }
         let phiLine;
@@ -677,11 +675,11 @@ function validateProof(parsedLines, premises) {
         break;
       }
 
-      case '¬I': {
-        if (citations.length !== 0) { errMsg = `Use a dash for subproofs: write "¬I ${citations[0]}–${citations[1] || citations[0]+1}", not "¬I ${citations.join(' ')}".`; break; }
-        if (!ranges || ranges.length !== 1) { errMsg = '¬I requires a subproof range m–n (e.g. ¬I 3–4).'; break; }
+      case 'I¬': {
+        if (citations.length !== 0) { errMsg = `Use a dash for subproofs: write "I¬ ${citations[0]}–${citations[1] || citations[0]+1}", not "I¬ ${citations.join(' ')}".`; break; }
+        if (!ranges || ranges.length !== 1) { errMsg = 'I¬ requires a subproof range m–n (e.g. I¬ 3–4).'; break; }
         const r = ranges[0];
-        if (formula.type !== 'neg') { errMsg = 'Result of ¬I must be a negation (¬φ)'; break; }
+        if (formula.type !== 'neg') { errMsg = 'Result of I¬ must be a negation (¬φ)'; break; }
         const assumeLine = getLine(r.m);
         const botLine    = getLine(r.n);
         if (!assumeLine || !botLine) { errMsg = 'Citation not found'; break; }

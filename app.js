@@ -240,16 +240,18 @@ function renderFitch(lines) {
       </div>`;
 
     // Horizontal separator after the final premise (textbook draws a line
-    // under the premises). Trigger on the last consecutive P line at depth 0.
-    if (rule === 'P' && depth === 0) {
+    // under the premises). Premises and assumptions share the 'A' label now;
+    // depth 0 is a premise, so trigger on the last consecutive depth-0 A line.
+    if (rule === 'A' && depth === 0) {
       const next = lines[idx + 1];
-      if (!next || !(next.rule === 'P' && next.depth === 0)) {
+      if (!next || !(next.rule === 'A' && next.depth === 0)) {
         html += `<div class="fitch-premise-sep"></div>`;
       }
     }
 
-    // Horizontal separator after assumptions
-    if (rule === 'A') {
+    // Horizontal separator after assumptions (depth > 0 — a subproof assumption,
+    // as opposed to a depth-0 premise which gets the separator above instead).
+    if (rule === 'A' && depth > 0) {
       html += `<div class="fitch-assume-sep" style="--bar-depth: ${depth}"></div>`;
     }
   });
@@ -265,79 +267,79 @@ function renderFitch(lines) {
 const RULE_ILLUSTRATIONS = [
   { label: 'Repetition', premises: 'p', conclusion: 'p',
     proof:
-`p   P
+`p   A
 p   R  1` },
-  { label: '∧I', premises: 'p, q', conclusion: 'p∧q',
+  { label: 'I∧', premises: 'p, q', conclusion: 'p∧q',
     proof:
-`p    P
-q    P
-p∧q  ∧I  1, 2` },
-  { label: '∧E', premises: 'p∧q', conclusion: 'p',
+`p    A
+q    A
+p∧q  I∧  1, 2` },
+  { label: 'E∧', premises: 'p∧q', conclusion: 'p',
     proof:
-`p∧q  P
-p    ∧E  1` },
-  { label: '→I', premises: 'p', conclusion: 'q→p',
+`p∧q  A
+p    E∧  1` },
+  { label: 'I→', premises: 'p', conclusion: 'q→p',
     proof:
-`p    P
+`p    A
   q  A
   p  R  1
-q→p  →I  2–3` },
-  { label: '→E', premises: 'p→q, p', conclusion: 'q',
+q→p  I→  2–3` },
+  { label: 'E→', premises: 'p→q, p', conclusion: 'q',
     proof:
-`p→q  P
-p    P
-q    →E  1, 2` },
-  { label: '∨I', premises: 'p', conclusion: 'p∨q',
+`p→q  A
+p    A
+q    E→  1, 2` },
+  { label: 'I∨', premises: 'p', conclusion: 'p∨q',
     proof:
-`p    P
-p∨q  ∨I  1` },
-  { label: '∨E', premises: 'p∨q, p→r, q→r', conclusion: 'r',
+`p    A
+p∨q  I∨  1` },
+  { label: 'E∨', premises: 'p∨q, p→r, q→r', conclusion: 'r',
     proof:
-`p∨q  P
-p→r  P
-q→r  P
-r    ∨E  1, 2, 3` },
-  { label: '¬I', premises: 'p, ¬p', conclusion: '¬q',
+`p∨q  A
+p→r  A
+q→r  A
+r    E∨  1, 2, 3` },
+  { label: 'I¬', premises: 'p, ¬p', conclusion: '¬q',
     proof:
-`p    P
-¬p   P
+`p    A
+¬p   A
   q  A
-  ⊥  ¬E  1, 2
-¬q   ¬I  3–4` },
-  { label: '¬E', premises: 'p, ¬p', conclusion: '⊥',
+  ⊥  E¬  1, 2
+¬q   I¬  3–4` },
+  { label: 'E¬', premises: 'p, ¬p', conclusion: '⊥',
     proof:
-`p    P
-¬p   P
-⊥    ¬E  1, 2` },
+`p    A
+¬p   A
+⊥    E¬  1, 2` },
   { label: 'EFSQ', premises: 'p, ¬p', conclusion: 'q',
     proof:
-`p    P
-¬p   P
-⊥    ¬E  1, 2
+`p    A
+¬p   A
+⊥    E¬  1, 2
 q    EFSQ  3` },
   { label: 'DN', premises: '¬¬p', conclusion: 'p',
     proof:
-`¬¬p  P
+`¬¬p  A
 p    DN  1` },
   // ── Quantifier rule illustrations ────────────────────────────────────────
   { label: '∀E', premises: '∀xPx', conclusion: 'Pa',
     proof:
-`∀xPx  P
+`∀xPx  A
 Pa    ∀E  1` },
   { label: '∀I', premises: '', conclusion: '∀x(Px→Px)',
     proof:
 `  Pa       A
   Pa       R  1
-Pa→Pa     →I  1–2
+Pa→Pa     I→  1–2
 ∀x(Px→Px)  ∀I  3` },
   { label: '∃I', premises: 'Pa', conclusion: '∃xPx',
     proof:
-`Pa    P
+`Pa    A
 ∃xPx  ∃I  1` },
   { label: '∃E', premises: '∃xPx, Pa→∃yQy', conclusion: '∃yQy',
     proof:
-`∃xPx      P
-Pa→∃yQy   P
+`∃xPx      A
+Pa→∃yQy   A
 ∃yQy      ∃E  1, 2` },
   // ── Identity rule illustrations ──────────────────────────────────
   { label: '=I', premises: '', conclusion: 'a=a',
@@ -345,8 +347,8 @@ Pa→∃yQy   P
 `a=a   =I` },
   { label: '=E', premises: 'a=b, Pa', conclusion: 'Pb',
     proof:
-`a=b   P
-Pa    P
+`a=b   A
+Pa    A
 Pb    =E  1, 2` },
 ];
 
@@ -356,129 +358,129 @@ const PROOF_EXAMPLES = [
     premises: 'p',
     conclusion: 'p',
     proof:
-`p   P
+`p   A
 p   R  1`,
   },
   {
-    label: '∧I',
+    label: 'I∧',
     premises: 'p, q, r',
     conclusion: 'p∧(r∧q)',
     proof:
-`p       P
-q       P
-r       P
-r∧q     ∧I  3, 2
-p∧(r∧q) ∧I  1, 4`,
+`p       A
+q       A
+r       A
+r∧q     I∧  3, 2
+p∧(r∧q) I∧  1, 4`,
   },
   {
-    label: '∧E',
+    label: 'E∧',
     premises: 'p∧(r∧q)',
     conclusion: 'r',
     proof:
-`p∧(r∧q)  P
-r∧q      ∧E  1
-r        ∧E  2`,
+`p∧(r∧q)  A
+r∧q      E∧  1
+r        E∧  2`,
   },
   {
-    label: '→E',
+    label: 'E→',
     premises: 'p, p→(q∧r), q→(s∧t)',
     conclusion: 'r∧t',
     proof:
-`p        P
-p→(q∧r)  P
-q→(s∧t)  P
-q∧r      →E  2, 1
-q        ∧E  4
-s∧t      →E  3, 5
-t        ∧E  6
-r        ∧E  4
-r∧t      ∧I  8, 7`,
+`p        A
+p→(q∧r)  A
+q→(s∧t)  A
+q∧r      E→  2, 1
+q        E∧  4
+s∧t      E→  3, 5
+t        E∧  6
+r        E∧  4
+r∧t      I∧  8, 7`,
   },
   {
-    label: '→I ⊢ p→(r∧q)',
+    label: 'I→ ⊢ p→(r∧q)',
     premises: 'p→(q∧r)',
     conclusion: 'p→(r∧q)',
     proof:
-`p→(q∧r)  P
+`p→(q∧r)  A
   p      A
-  q∧r    →E  1, 2
-  r      ∧E  3
-  q      ∧E  3
-  r∧q    ∧I  4, 5
-p→(r∧q)  →I  2–6`,
+  q∧r    E→  1, 2
+  r      E∧  3
+  q      E∧  3
+  r∧q    I∧  4, 5
+p→(r∧q)  I→  2–6`,
   },
   {
-    label: '→I ⊢ p→q',
+    label: 'I→ ⊢ p→q',
     premises: 'p∧q',
     conclusion: 'p→q',
     proof:
-`p∧q  P
+`p∧q  A
   p  A
-  q  ∧E  1
-p→q  →I  2–3`,
+  q  E∧  1
+p→q  I→  2–3`,
   },
   {
-    label: '∨E',
+    label: 'E∨',
     premises: '(p∧q)∨(q∧p)',
     conclusion: 'p',
     proof:
-`(p∧q)∨(q∧p)  P
+`(p∧q)∨(q∧p)  A
   p∧q  A
-  p    ∧E  2
-(p∧q)→p      →I  2–3
+  p    E∧  2
+(p∧q)→p      I→  2–3
   q∧p  A
-  p    ∧E  5
-(q∧p)→p      →I  5–6
-p            ∨E  1, 4, 7`,
+  p    E∧  5
+(q∧p)→p      I→  5–6
+p            E∨  1, 4, 7`,
   },
   {
-    label: '¬I ⊢ ¬¬p',
+    label: 'I¬ ⊢ ¬¬p',
     premises: 'p',
     conclusion: '¬¬p',
     proof:
-`p   P
+`p   A
   ¬p  A
-  ⊥   ¬E  1, 2
-¬¬p   ¬I  2–3`,
+  ⊥   E¬  1, 2
+¬¬p   I¬  2–3`,
   },
   {
-    label: '¬I ⊢ ¬p',
+    label: 'I¬ ⊢ ¬p',
     premises: 'p→q, ¬q',
     conclusion: '¬p',
     proof:
-`p→q  P
-¬q   P
+`p→q  A
+¬q   A
   p  A
-  q  →E  1, 3
-  ⊥  ¬E  4, 2
-¬p   ¬I  3–5`,
+  q  E→  1, 3
+  ⊥  E¬  4, 2
+¬p   I¬  3–5`,
   },
   {
     label: 'DS',
     premises: 'p∨q, ¬p',
     conclusion: 'q',
     proof:
-`p∨q  P
-¬p   P
+`p∨q  A
+¬p   A
   p   A
-  ⊥   ¬E  3, 2
+  ⊥   E¬  3, 2
   q   EFSQ  4
-p→q  →I  3–5
+p→q  I→  3–5
   q   A
   q   R  7
-q→q  →I  7–8
-q    ∨E  1, 6, 9`,
+q→q  I→  7–8
+q    E∨  1, 6, 9`,
   },
   {
     label: 'EFSQ',
     premises: '¬p',
     conclusion: 'p→q',
     proof:
-`¬p  P
+`¬p  A
   p  A
-  ⊥  ¬E  2, 1
+  ⊥  E¬  2, 1
   q  EFSQ  3
-p→q  →I  2–4`,
+p→q  I→  2–4`,
   },
   {
     label: 'DN',
@@ -487,12 +489,12 @@ p→q  →I  2–4`,
     proof:
 `  ¬(p∨¬p)  A
     p      A
-    p∨¬p   ∨I  2
-    ⊥      ¬E  3, 1
-  ¬p       ¬I  2–4
-  p∨¬p     ∨I  5
-  ⊥        ¬E  6, 1
-¬¬(p∨¬p)   ¬I  1–7
+    p∨¬p   I∨  2
+    ⊥      E¬  3, 1
+  ¬p       I¬  2–4
+  p∨¬p     I∨  5
+  ⊥        E¬  6, 1
+¬¬(p∨¬p)   I¬  1–7
 p∨¬p       DN  8`,
   },
   // ── Quantificational logic examples (Ch. 10) ────────────────────────────
@@ -501,37 +503,37 @@ p∨¬p       DN  8`,
     premises: '∀xPx→∃xPx, ¬∃xPx',
     conclusion: '¬∀xPx',
     proof:
-`∀xPx→∃xPx  P
-¬∃xPx    P
+`∀xPx→∃xPx  A
+¬∃xPx    A
   ∀xPx    A
-  ∃xPx    →E  1, 3
-  ⊥       ¬E  4, 2
-¬∀xPx     ¬I  3–5`,
+  ∃xPx    E→  1, 3
+  ⊥       E¬  4, 2
+¬∀xPx     I¬  3–5`,
   },
   {
     label: '10.3: ∀x∀y(Px→Qy), Pa ⊢ Qb',
     premises: '∀x∀y(Px→Qy), Pa',
     conclusion: 'Qb',
     proof:
-`∀x∀y(Px→Qy)  P
-Pa            P
+`∀x∀y(Px→Qy)  A
+Pa            A
 ∀y(Pa→Qy)    ∀E  1
 Pa→Qb          ∀E  3
-Qb            →E  4, 2`,
+Qb            E→  4, 2`,
   },
   {
     label: '10.5: ∀x(Px→Qx), ∀x(Qx→Rx) ⊢ ∀x(Px→Rx)',
     premises: '∀x(Px→Qx), ∀x(Qx→Rx)',
     conclusion: '∀x(Px→Rx)',
     proof:
-`∀x(Px→Qx)  P
-∀x(Qx→Rx)  P
+`∀x(Px→Qx)  A
+∀x(Qx→Rx)  A
   Pa       A
   Pa→Qa   ∀E  1
   Qa→Ra   ∀E  2
-  Qa       →E  4, 3
-  Ra       →E  5, 6
-Pa→Ra      →I  3–7
+  Qa       E→  4, 3
+  Ra       E→  5, 6
+Pa→Ra      I→  3–7
 ∀x(Px→Rx)  ∀I  8`,
   },
   {
@@ -539,7 +541,7 @@ Pa→Ra      →I  3–7
     premises: 'Rab',
     conclusion: '∃x∃yRxy',
     proof:
-`Rab      P
+`Rab      A
 ∃yRay   ∃I  1
 ∃x∃yRxy  ∃I  2`,
   },
@@ -548,13 +550,13 @@ Pa→Ra      →I  3–7
     premises: '∀x(Px→Qx), ∃yPy',
     conclusion: '∃zQz',
     proof:
-`∀x(Px→Qx)  P
-∃yPy         P
+`∀x(Px→Qx)  A
+∃yPy         A
 Pa→Qa          ∀E  1
   Pa          A
-  Qa          →E  3, 4
+  Qa          E→  3, 4
   ∃zQz        ∃I  5
-Pa→∃zQz        →I  4–6
+Pa→∃zQz        I→  4–6
 ∃zQz           ∃E  2, 7`,
   },
 ];
@@ -716,7 +718,7 @@ function newProblemProof() {
 // Supported values:
 //   ?card=sequent  — shows only the Sequent (premises + conclusion) card
 //   ?card=proof    — shows only the Proof (textarea + symbol bar) card
-//   ?card=verify   — shows only the Verification (Fitch display) card
+//   ?card=verify   — shows only the Proof Check (Fitch display) card
 //
 // Multiple cards: ?card=sequent,proof  (comma-separated, order ignored)
 // All cards behave normally — live verification still runs across all three.
