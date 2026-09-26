@@ -739,7 +739,7 @@ function newProblemProof() {
 
   // Hide header, examples bar, help panel, completion banner
   const header    = document.querySelector('.app-header');
-  const examples  = document.querySelector('.examples-bar');
+  const examples  = document.querySelectorAll('.tree-row')[0];
   const helpPanel = document.getElementById('help-panel');
   const banner    = document.getElementById('completion-banner');
 
